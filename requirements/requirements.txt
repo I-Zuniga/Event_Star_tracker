@@ -1,0 +1,4 @@
+scipy==1.7.2
+minisom==2.3.1
+numpy==1.22.4
+pandas==2.1.3
