@@ -61,6 +61,8 @@ def main():
                 global_counter += counter  # Increase global counter
 
                 print(f"There were {counter} events in this event buffer.")
+                print(f"The envs size is  {evs.size}")
+                print(evs)
                 print(f"There were {global_counter} total events up to now.")
                 print(f"The current event buffer included events from {min_t} to {max_t} microseconds.")
                 print("----- End of the event buffer! -----")
