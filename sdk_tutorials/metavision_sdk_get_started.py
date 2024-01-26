@@ -73,7 +73,7 @@ def main():
     print(f"The total duration was {duration_seconds:.2f} seconds.")
     if duration_seconds >= 1:  # No need to print this statistics if the video was too short
         print(f"There were {global_counter / duration_seconds :.2f} events per second on average.")
-
+        
 
 if __name__ == "__main__":
     main()

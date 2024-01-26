@@ -2,15 +2,6 @@
 import pandas as pd
 import numpy as np 
 
-# set diferent type of features combinations
-
-class features: 
-    def __init__(self, type):
-        self.type = type 
-        pass
-
-
-
 
 def load_catalog(file_path):
     """

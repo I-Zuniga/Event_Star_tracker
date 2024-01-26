@@ -1,2 +1,4 @@
 *.raw
 *.pyc
+
+*.raw.tmp_index
