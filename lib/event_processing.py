@@ -4,18 +4,19 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-def blend_buffer(frames_buffer):
+def blend_buffer(frames_buffer, mirror = False):
     ''' Get a frame buffer and compacts it into a single frame
     
     Parameters:
     ----------
         frames_buffer (list): list of frames to be compacted   
+        mirror (bool): if True the frame is mirror
     Returns:
     -------
-            blend (np.array): compacted frame
+        blend (np.array): compacted frame
     
             
-            '''
+    '''
 
 
     blend = np.array(np.zeros((cv2.cvtColor(np.array(frames_buffer[0]), cv2.COLOR_BGR2GRAY).shape)))
@@ -24,6 +25,11 @@ def blend_buffer(frames_buffer):
         gray = cv2.cvtColor(np.array(frame), cv2.COLOR_BGR2GRAY)
         blend += gray
     blend = blend/len(frames_buffer)
+
+    # mirror the image
+    if mirror:
+        blend = np.fliplr(blend)
+
 
     return blend.astype(np.uint8)
 
@@ -147,24 +153,30 @@ def max_value_cluster(img, pixel_range, n_clusters, iterations=1):
         cluster_x = 0
         cluster_y = 0
         cluster_mass = 0
-        # Performs the clustering on the pixel range around the maximun pixel value
-        for i in range(-pixel_range, pixel_range):
-            for j in range(-pixel_range, pixel_range):
-                if max_index[0]+i < filtered_img.shape[0] and max_index[1]+j < filtered_img.shape[1]:
-                    
-                    cluster_x += filtered_img[max_index[0] + i , max_index[1] + j ] * i
-                    cluster_y += filtered_img[max_index[0] + i , max_index[1] + j ] * j
-                    cluster_mass += filtered_img[max_index[0] + i , max_index[1] + j ] 
 
-                    # Delete the pixels that are part of the cluster to find another maximun
-                    filtered_img[max_index[0] + i , max_index[1] + j ] = 0
+        # Create a mask to select the pixels within the pixel range
+        mask = np.zeros_like(filtered_img, dtype=bool)
+        mask[max_index[0] - pixel_range:max_index[0] + pixel_range + 1,
+             max_index[1] - pixel_range:max_index[1] + pixel_range + 1] = True
 
-        #CHECK 
-        # plot_image(filtered_img)
+        # Get the coordinates and values of the pixels within the mask
+        coords = np.argwhere(mask)
+        values = filtered_img[mask]
+
+        # Perform the clustering using vectorized operations
+        cluster_x = np.sum(coords[:, 0] * values)
+        cluster_y = np.sum(coords[:, 1] * values)
+        cluster_mass = np.sum(values)
+
+        # Calculate the cluster centroid
+
         if cluster_mass != 0:
-            clusters.append([ np.round(max_index + [cluster_x, cluster_y]/cluster_mass).astype(int), 
-                            cluster_mass, 
-                            np.array(max_index)]) 
+            # Append the cluster to the list
+            clusters.append([np.round([cluster_x, cluster_y] / cluster_mass).astype(int)
+                          , cluster_mass, np.array(max_index)])
+
+        # Set the pixels within the mask to zero
+        filtered_img[mask] = 0
 
     return clusters
 
@@ -285,7 +297,7 @@ def order_by_main_dist(main_cluster, clusters):
 
     return clusters
 
-def get_star_features(star_list):
+def get_star_features(star_list, ref_pixel_to_deg = 0.005319449742301844, reference_FOV = 2, recording_FOV = 10):
     ''' 
        Compute the star features for the first star of the list. The star list shoud be ordered by the 
        distance to the first star. 
@@ -319,6 +331,10 @@ def get_star_features(star_list):
         for k in range(j+1,len(star_list)):
             star_features_2.append( np.linalg.norm(star_list[k] - star_list[j]) )
 
+    pixel_to_deg = ref_pixel_to_deg * recording_FOV/reference_FOV
+    # Pixels to deegres 
+    star_features_1 = np.array(star_features_1)*pixel_to_deg
+    star_features_2 = np.array(star_features_2)*pixel_to_deg
 
     return star_features_1, star_features_2
 
@@ -351,3 +367,35 @@ def predict_star_id(features, norm_param, dictionary, som):
         return dictionary[winner]
     else:
         return [0] #The neuron has no star ID return [0], the ID start at 1 
+    
+
+
+def test_get_features(): 
+    '''
+    Test the get features function
+    
+    '''
+    test_stars =[ [45.569912 , 4.089921],
+                [45.593785 , 4.352873],
+                [48.109873 , 6.660885],
+                [49.839787 , 3.369980],
+                [50.278217 , 3.675680]]
+    test_stars = np.array(test_stars)
+
+    test_sol_1 = [0.02387304999999884, 0.2629516700000005, 2.539961389999995, 2.5709636100000006, 4.269874999999999, -0.7199413899999998, 4.708305269999997, -0.41424110999999986]
+    test_sol_2 = [0.2640331480554887, 3.6140362126900363, 4.330144122389013, 4.726492802567647, 3.4143256508227946, 4.358280776498913, 4.733127431736677, 3.717883378629331, 3.6896019300520404, 0.5344845768068048]
+    features_1, features_2 = get_star_features(test_stars,1,1,1)
+
+
+    print('Features 1 len: ',len(features_1), ', Features 2 len: ', len(features_2))
+    print('Main star: ', test_stars[0]) 
+    print('Features 1: ', features_1)
+    print('Features 2: ', features_2)
+
+    # for i in range(len(features_1)):
+    #     print(f"Star posistion {test_stars[i]}  features: {features_1[i]}")
+    #     print(f"    features 1: {features_1[i]}")
+    #     print(f"    features 2: {features_2[i]}")
+
+    print('Test error 1:', np.array(test_sol_1) - np.array(features_1))
+    print('Test error 2:', np.array(test_sol_2) - np.array(features_2))
