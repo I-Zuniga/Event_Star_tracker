@@ -211,32 +211,35 @@ def index_cluster(img, pixel_range, clusters_index):
 
     clusters = []
 
-    for k in range(len(clusters_index)):
-        # Get the maximun pixel value
-        cluster_index = clusters_index[k]
+    for max_index in clusters_index:
 
         cluster_x = 0
         cluster_y = 0
         cluster_mass = 0
-        # Performs the clustering on the pixel range around the maximun pixel value
-        for i in range(-pixel_range, pixel_range):
-            for j in range(-pixel_range, pixel_range):
-                if cluster_index[0]+i < filtered_img.shape[0] and cluster_index[1]+j < filtered_img.shape[1]:
 
-                    cluster_x += filtered_img[cluster_index[0] + i , cluster_index[1] + j ] * i
-                    cluster_y += filtered_img[cluster_index[0] + i , cluster_index[1] + j ] * j
-                    cluster_mass += filtered_img[cluster_index[0] + i , cluster_index[1] + j ] 
+        # Create a mask to select the pixels within the pixel range
+        mask = np.zeros_like(filtered_img, dtype=bool)
+        mask[max_index[0] - pixel_range:max_index[0] + pixel_range + 1,
+             max_index[1] - pixel_range:max_index[1] + pixel_range + 1] = True
 
-                    # Delete the pixels that are part of the cluster to find another maximun
-                    filtered_img[cluster_index[0] + i , cluster_index[1] + j ] = 0
+        # Get the coordinates and values of the pixels within the mask
+        coords = np.argwhere(mask)
+        values = filtered_img[mask]
 
-        #CHECK 
-        # plot_image(filtered_img)
-        
+        # Perform the clustering using vectorized operations
+        cluster_x = np.sum(coords[:, 0] * values)
+        cluster_y = np.sum(coords[:, 1] * values)
+        cluster_mass = np.sum(values)
+
+        # Calculate the cluster centroid
+
         if cluster_mass != 0:
-           clusters.append([ np.round(cluster_index + [cluster_x, cluster_y]/cluster_mass).astype(int), 
-                            cluster_mass, 
-                            np.array(cluster_index)]) 
+            # Append the cluster to the list
+            clusters.append([np.round([cluster_x, cluster_y] / cluster_mass).astype(int)
+                          , cluster_mass, np.array(max_index)])
+
+        # Set the pixels within the mask to zero
+        filtered_img[mask] = 0
 
     return clusters
 
