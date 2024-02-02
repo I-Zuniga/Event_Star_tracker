@@ -2,12 +2,18 @@ from metavision_core.event_io import EventsIterator
 import numpy as np
 import matplotlib.pyplot as plt
 
+import cv2
+
 
 def plot_image(img):
     # Create figure and axes 
     fig, ax = plt.subplots()
     # Display the image
     ax.imshow(img, cmap='gray')
+
+    # Make the figure bigger 
+    fig.set_size_inches(18.5, 10.5)
+    
 
     # # Show the plot
     plt.show()
@@ -39,7 +45,7 @@ def plot_cluster(img, clusters, cluster_size):
     ax.imshow(img, cmap='gray')
 
     # If the clusters are in the full cluster form [ [x_pixel, y_pixel], cluster comulative mass, inital cluster position [x_max, y_max] ]
-    if len(clusters[1]) > 2:
+    if len(clusters[0]) > 2:
 
         # Plot a square around the initial clusters position with size cluster_size
         for cluster in clusters:
@@ -70,7 +76,7 @@ def plot_cluster(img, clusters, cluster_size):
                         [cluster[2][0] + 2, cluster[2][0] - 2], 'r')
                 
     # If cluster is only cluster position [x_pixel, y_pixel]
-    elif len(clusters[1]) == 2:
+    elif len(clusters[0]) == 2:
         for cluster in clusters:
                 # Plot a square around the initial clusters position with size cluster_size
                 ax.plot([cluster[1] - cluster_size, cluster[1] - cluster_size, cluster[1] + cluster_size, cluster[1] + cluster_size, cluster[1] - cluster_size],
@@ -139,3 +145,9 @@ def plot_cluster_comparation(img, clusters_batchs, cluster_size):
 
     # Show the plot
     plt.show()
+
+
+def cv_plot(img):
+    cv2.imshow('image',img)  
+    cv2.waitKey() # This is necessary to be required so that the image doesn't close immediately.   
+    cv2.destroyAllWindows()
