@@ -115,7 +115,7 @@ def treshold_filter(img, treshold):
 
     return filtered_img
 
-def max_value_cluster(img, pixel_range, n_clusters, iterations=1):
+def max_value_cluster(img, pixel_range, n_clusters):
 
     '''
     Creates a list of clusters searching the the maximun pixel value and performing the center of mass 
@@ -130,9 +130,6 @@ def max_value_cluster(img, pixel_range, n_clusters, iterations=1):
         (clustering).
     n_clusters : int
         Number of clusters to be found.
-    iterations : int, optional
-        Number of times the clustering is performed. When iterating the clusters are ordered by the cluster 
-        mass and the index used a preliminary stimations . The default is 1.
 
     Returns
     -------
@@ -154,10 +151,12 @@ def max_value_cluster(img, pixel_range, n_clusters, iterations=1):
         cluster_y = 0
         cluster_mass = 0
 
-        # Create a mask to select the pixels within the pixel range
+        # Create a mask to select the pixels within the pixel range and check if the mask is out of the image
         mask = np.zeros_like(filtered_img, dtype=bool)
-        mask[max_index[0] - pixel_range:max_index[0] + pixel_range + 1,
-             max_index[1] - pixel_range:max_index[1] + pixel_range + 1] = True
+        mask[ (max_index[0] - pixel_range) if (max_index[0]-pixel_range) > 0 else 0:max_index[0] + pixel_range + 1 if 
+             (max_index[0] + pixel_range + 1) < filtered_img.shape[0] else filtered_img.shape[0],
+                (max_index[1] - pixel_range) if (max_index[1]-pixel_range) > 0 else 0:max_index[1] + pixel_range + 1 if
+                (max_index[1] + pixel_range + 1) < filtered_img.shape[1] else filtered_img.shape[1]] = True
 
         # Get the coordinates and values of the pixels within the mask
         coords = np.argwhere(mask)
@@ -169,13 +168,12 @@ def max_value_cluster(img, pixel_range, n_clusters, iterations=1):
         cluster_mass = np.sum(values)
 
         # Calculate the cluster centroid
-
         if cluster_mass != 0:
             # Append the cluster to the list
             clusters.append([np.round([cluster_x, cluster_y] / cluster_mass).astype(int)
                           , cluster_mass, np.array(max_index)])
 
-        # Set the pixels within the mask to zero
+        # Set the pixels within the mask to zero 
         filtered_img[mask] = 0
 
     return clusters
@@ -217,10 +215,12 @@ def index_cluster(img, pixel_range, clusters_index):
         cluster_y = 0
         cluster_mass = 0
 
-        # Create a mask to select the pixels within the pixel range
+        # Create a mask to select the pixels within the pixel range and check if the mask is out of the image
         mask = np.zeros_like(filtered_img, dtype=bool)
-        mask[max_index[0] - pixel_range:max_index[0] + pixel_range + 1,
-             max_index[1] - pixel_range:max_index[1] + pixel_range + 1] = True
+        mask[ (max_index[0] - pixel_range) if (max_index[0]-pixel_range) > 0 else 0:max_index[0] + pixel_range + 1 if 
+             (max_index[0] + pixel_range + 1) < filtered_img.shape[0] else filtered_img.shape[0],
+                (max_index[1] - pixel_range) if (max_index[1]-pixel_range) > 0 else 0:max_index[1] + pixel_range + 1 if
+                (max_index[1] + pixel_range + 1) < filtered_img.shape[1] else filtered_img.shape[1]] = True
 
         # Get the coordinates and values of the pixels within the mask
         coords = np.argwhere(mask)
@@ -402,3 +402,23 @@ def test_get_features():
 
     print('Test error 1:', np.array(test_sol_1) - np.array(features_1))
     print('Test error 2:', np.array(test_sol_2) - np.array(features_2))
+
+
+def log_polar_transform(x0, y0, x, y):
+    ''' 
+    Transforms x, y coordinates to log polar coordinates
+    
+    Parameters:
+    x, y: float
+        Cartesian coordinates
+    x0, y0: float
+        Center of the log polar coordinates (reference star)
+        
+    Returns:
+    r, theta: float
+        Log polar coordinates
+        
+    '''
+    r = np.sqrt((x - x0)**2 + (y - y0)**2)
+    theta = np.arctan2(y - y0, x - x0)
+    return r, theta

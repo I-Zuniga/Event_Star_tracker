@@ -3,3 +3,6 @@
 
 # To run 
  $ python3 metavision_sdk_get_started.py -i ../data/195_falling_particles.raw
+
+# Server 
+$ ssh eventjetson@10.157.95.86

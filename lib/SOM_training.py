@@ -1,3 +1,10 @@
+import os
+path = os.getcwd()
+# Get parent directory
+parent = os.path.dirname(path)
+#Add parent directory to system path
+os.sys.path.insert(0, parent)
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,6 +14,7 @@ import platform
 from scipy.spatial import KDTree
 
 from lib.utils import *
+from lib.event_processing import *
 
 # Define a function to predict the star ID for a given feature vector
 def predict_star_id(features, features_array, dictionary, som):
@@ -35,15 +43,22 @@ def add_values_in_dict(sample_dict, key, list_of_values):
 def train(hyperparameters):
     ## Select the dataset type: 'random' or 'tycho'
     # stars_data = utils.get_star_dataset(type ='random', n_stars = 4000)
-    catalog_path = 'data/catalogs/tycho2_VT_6.csv'
+    catalog_path = '../data/catalogs/tycho2_VT_6.csv'
     stars_data = get_star_dataset(type ='tycho', path = catalog_path)
-
-    print(stars_data)
 
     # If data type is a dataframe from a catalog transform it to array
     if isinstance(stars_data, pd.DataFrame):
         # stars_data['data_number'] = stars_data.index
         stars_data = stars_data[['HIP','RA(ICRS)', 'DE(ICRS)']].values
+
+    # Create the k-d tree to find the nearest neighborhoods of the center stars
+    # As this is used only for the training of the SOM performace is not needed
+    tree = KDTree(stars_data[:,1:3])
+
+    n_of_neighbor = 4 # Number of neighborhoods stars used to compute the features
+
+    # Find the 5 closest neighbors for each star
+    distances, indices = tree.query(stars_data[:,1:3], k=n_of_neighbor+1)
 
     # Create the k-d tree to find the nearest neighborhoods of the center stars
     # As this is used only for the training of the SOM performace is not needed
@@ -60,18 +75,18 @@ def train(hyperparameters):
 
     # Compute the distances in the x and y axes to each of the five closest stars for each star
     for i in range(len(stars_data)):
+
         # Initialice the subsets of features
         features_1 = []
         features_2 = []
-
 
         for j in range(1,n_of_neighbor+1):
             neighbor_index = indices[i][j]
             x_distance = stars_data[neighbor_index][1] - stars_data[i][1]
             y_distance = stars_data[neighbor_index][2] - stars_data[i][2]
 
-            features_1.append(x_distance)
-            features_1.append(y_distance)
+            #  Define the features vector that is going to be used in the SOM:
+            features_1.extend(log_polar_transform(stars_data[i][1], stars_data[i][2], stars_data[neighbor_index][1], stars_data[neighbor_index][2]) )
                 
             for k in range(1 +j-1,n_of_neighbor+1):
                 features_2.append( np.sqrt( (stars_data[indices[i][k]][1] - stars_data[indices[i][j-1]][1])**2
@@ -140,7 +155,7 @@ def train(hyperparameters):
     for i in range(features_vec_1.shape[0]):
 
         # Itroduce noise in the features vector to check the response of the SOM
-        scale = 0.01 # % respect max value 
+        scale = 0.005 # % respect max value 
 
         noise_1 = np.random.normal(loc=0, scale=1, size=features_vec_1.shape[1])*np.max(features_vec_1[i])*scale
         noise_2 = np.random.normal(loc=0, scale=1, size=features_vec_2.shape[1])*np.max(features_vec_2[i])*scale
@@ -162,3 +177,14 @@ def train(hyperparameters):
     mean_noise = mean_noise / features_vec_1.shape[0] / 2
 
     return cont[0] / features_vec_1.shape[0]
+
+# if __name__ == "__main__":
+#     hyperparameters = {
+#         'sigma': 1,
+#         'learning_rate': 0.2,
+#         'neighborhood_function': 'gaussian',
+#         'topology': 'hexagonal',
+#         'activation_distance': 'euclidean'
+#     }
+#     accuracy = train(hyperparameters)
+#     print(accuracy)

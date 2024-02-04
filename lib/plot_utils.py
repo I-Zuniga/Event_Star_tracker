@@ -8,14 +8,8 @@ import cv2
 def plot_image(img):
     # Create figure and axes 
     fig, ax = plt.subplots()
-    # Display the image
     ax.imshow(img, cmap='gray')
-
-    # Make the figure bigger 
     fig.set_size_inches(18.5, 10.5)
-    
-
-    # # Show the plot
     plt.show()
 
     # Pause for 0.01 seconds
