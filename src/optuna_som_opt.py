@@ -29,6 +29,8 @@ from lib.SOM_training import *
 
 def objective(trial):
     # Number of layers and units per layer for actor
+    mesh_size_1 = trial.suggest_int('mesh_size_1', 25, 70)
+    mesh_size_2 = trial.suggest_int('mesh_size_2', 25, 70)
     sigma = trial.suggest_float('sigma', 1, 10)
     learning_rate = trial.suggest_float('learning_rate', 0.2, 1)
 
@@ -37,6 +39,8 @@ def objective(trial):
     activation_distance = trial.suggest_categorical('activation_distance', ['euclidean', 'manhattan', 'chebyshev'])
     
     hyperparameters = {
+        'mesh_size_1': mesh_size_1,
+        'mesh_size_2': mesh_size_2,
         'sigma': sigma,
         'learning_rate': learning_rate,
         'neighborhood_function': neighborhood_function,
@@ -61,8 +65,9 @@ study = optuna.create_study(
     direction='maximize',
     storage="sqlite:///db.sqlite3",
     study_name="SOM_hyperparameters",
+    load_if_exists=True
     )
-study.optimize(objective, n_trials=100)  # You can adjust the number of trials
+study.optimize(objective, n_trials=500)  # You can adjust the number of trials
 
 
 pruned_trials = study.get_trials(states=(optuna.trial.TrialState.PRUNED,))

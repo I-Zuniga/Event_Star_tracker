@@ -109,12 +109,10 @@ def train(hyperparameters):
     # mesh_size = int(np.sqrt(features_1_n.shape[0])/2)
     # Manual set 
 
-    mesh_size = 35
-
     # Initialize the SOM
     som1 = MiniSom(
-        x = mesh_size,
-        y = mesh_size,
+        x = hyperparameters['mesh_size_1'],
+        y = hyperparameters['mesh_size_1'],
         input_len = features_1_n.shape[1],
 
         sigma=hyperparameters['sigma'],
@@ -126,8 +124,8 @@ def train(hyperparameters):
     )
 
     som2 = MiniSom(
-        x = mesh_size,
-        y = mesh_size,
+        x = hyperparameters['mesh_size_2'],
+        y = hyperparameters['mesh_size_2'],
         input_len = features_2_n.shape[1],
 
         sigma=hyperparameters['sigma'],
