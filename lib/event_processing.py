@@ -324,19 +324,20 @@ def get_star_features(star_list, ref_pixel_to_deg = 0.005319449742301844, refere
     star_features_2 = []
 
     # Compute the x and y distance between the each star and the rest of the stars
-    for j in range(1,len(star_list)):
-            # x and y distance between the stars
-            star_features_1.append(star_list[j][0] - star_list[0][0])
-            star_features_1.append(star_list[j][1] - star_list[0][1])
+
 
     for j in range(len(star_list)):
+        if j != 0:
+            # Log polar transform
+            star_features_1.extend(log_polar_transform(star_list[0][1], star_list[0][0], star_list[j][1], star_list[j][0]))
         # Compute distance btwen each neirbour star (permutation)
         for k in range(j+1,len(star_list)):
             star_features_2.append( np.linalg.norm(star_list[k] - star_list[j]) )
 
     pixel_to_deg = ref_pixel_to_deg * recording_FOV/reference_FOV
     # Pixels to deegres 
-    star_features_1 = np.array(star_features_1)*pixel_to_deg
+    star_features_1[::2] += np.log(pixel_to_deg)  # Only the r component is scaled (in log) as theta is in radians
+    star_features_1 = np.array(star_features_1)
     star_features_2 = np.array(star_features_2)*pixel_to_deg
 
     return star_features_1, star_features_2
@@ -378,6 +379,8 @@ def test_get_features():
     Test the get features function
     
     '''
+
+    
     test_stars =[ [45.569912 , 4.089921],
                 [45.593785 , 4.352873],
                 [48.109873 , 6.660885],
@@ -385,7 +388,7 @@ def test_get_features():
                 [50.278217 , 3.675680]]
     test_stars = np.array(test_stars)
 
-    test_sol_1 = [0.02387304999999884, 0.2629516700000005, 2.539961389999995, 2.5709636100000006, 4.269874999999999, -0.7199413899999998, 4.708305269999997, -0.41424110999999986]
+    test_sol_1 = [0.2640331480554887, 1.480255808333344, 3.6140362126900363, 0.7914639616175609, 4.330144122389013, -0.16703838162066847, 4.726492802567647, -0.08775497592500049]
     test_sol_2 = [0.2640331480554887, 3.6140362126900363, 4.330144122389013, 4.726492802567647, 3.4143256508227946, 4.358280776498913, 4.733127431736677, 3.717883378629331, 3.6896019300520404, 0.5344845768068048]
     features_1, features_2 = get_star_features(test_stars,1,1,1)
 
@@ -419,6 +422,8 @@ def log_polar_transform(x0, y0, x, y):
         Log polar coordinates
         
     '''
-    r = np.sqrt((x - x0)**2 + (y - y0)**2)
-    theta = np.arctan2(y - y0, x - x0)
+    r = np.log(np.sqrt((x - x0)**2 + (y - y0)**2) )
+    theta = ( np.arctan2(y, x) - np.arctan2(y0, x0) + 2 * np.pi) % (2 * np.pi)
+
+    
     return r, theta

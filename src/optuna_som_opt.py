@@ -14,7 +14,7 @@ from scipy.spatial import KDTree
 # from optuna.pruners import BasePruner
 # from optuna.trial._state import TrialState
 
-from lib.SOM_training import *
+from lib.som_training import *
 
 # DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -29,14 +29,17 @@ from lib.SOM_training import *
 
 def objective(trial):
     # Number of layers and units per layer for actor
-    mesh_size_1 = trial.suggest_int('mesh_size_1', 25, 70)
-    mesh_size_2 = trial.suggest_int('mesh_size_2', 25, 70)
-    sigma = trial.suggest_float('sigma', 1, 10)
-    learning_rate = trial.suggest_float('learning_rate', 0.2, 1)
+    # mesh_size_1 = trial.suggest_int('mesh_size_1', 67,68)
+    # mesh_size_2 = trial.suggest_int('mesh_size_2', 67,68)
+    mesh_size_1 = 68
+    mesh_size_2 = 68
 
-    neighborhood_function = trial.suggest_categorical('neighborhood_function', ['gaussian', 'mexican_hat', 'bubble', 'triangle'])
+    sigma = trial.suggest_float('sigma', 1, 10)
+    learning_rate = trial.suggest_float('learning_rate', 0.2, 2)
+
+    neighborhood_function = trial.suggest_categorical('neighborhood_function', ['gaussian', 'bubble', 'triangle'])
     topology = trial.suggest_categorical('topology', ['hexagonal', 'rectangular'])
-    activation_distance = trial.suggest_categorical('activation_distance', ['euclidean', 'manhattan', 'chebyshev'])
+    activation_distance = trial.suggest_categorical('activation_distance', ['euclidean', 'manhattan'])
     
     hyperparameters = {
         'mesh_size_1': mesh_size_1,
@@ -48,11 +51,11 @@ def objective(trial):
         'activation_distance': activation_distance
     }
 
-    accuracy = train(hyperparameters)
+    accuracy = train_som2(hyperparameters)
 
     # Handle pruning based on the intermediate value.    
-    if trial.should_prune():
-        raise optuna.exceptions.TrialPruned()
+    # if trial.should_prune():
+    #     raise optuna.exceptions.TrialPruned()
     
     return accuracy
 
@@ -64,18 +67,18 @@ print("Study statistics: ")
 study = optuna.create_study(
     direction='maximize',
     storage="sqlite:///db.sqlite3",
-    study_name="SOM_hyperparameters",
-    load_if_exists=True
+    study_name="som2_size_68x68",
+    load_if_exists=True,
     )
-study.optimize(objective, n_trials=500)  # You can adjust the number of trials
+study.optimize(objective, n_trials=150)  # You can adjust the number of trials
 
 
-pruned_trials = study.get_trials(states=(optuna.trial.TrialState.PRUNED,))
+# pruned_trials = study.get_trials(states=(optuna.trial.TrialState.PRUNED,))
 complete_trials = study.get_trials(states=(optuna.trial.TrialState.COMPLETE,))
 
 print("Study statistics: ")
 print("  Number of finished trials: ", len(study.trials))
-print("  Number of pruned trials: ", len(pruned_trials))
+# print("  Number of pruned trials: ", len(pruned_trials))
 print("  Number of complete trials: ", len(complete_trials))
 
 # Print the best hyperparameters
