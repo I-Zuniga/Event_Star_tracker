@@ -39,7 +39,6 @@ def add_values_in_dict(sample_dict, key, list_of_values):
     sample_dict[key].extend(list_of_values)
     return sample_dict
 
-
 def train(hyperparameters):
     ## Select the dataset type: 'random' or 'tycho'
     # stars_data = utils.get_star_dataset(type ='random', n_stars = 4000)

@@ -15,7 +15,7 @@ def plot_image(img):
     # Pause for 0.01 seconds
     plt.pause(0.01)
 
-def plot_cluster(img, clusters, cluster_size):
+def plot_cluster(img, clusters, cluster_size, size = [10, 7]):
     '''
     Plot the clusters on the image. 
 
@@ -28,6 +28,8 @@ def plot_cluster(img, clusters, cluster_size):
                         [ [x_pixel, y_pixel], cluster comulative mass, inital cluster position [x_max, y_max] ]
         cluster_size : int
                 Size of the square to be plotted around the cluster.
+        size : list 
+                Size of the image.
 
         Returns
         -------
@@ -82,6 +84,7 @@ def plot_cluster(img, clusters, cluster_size):
                 # Plot the cluster number as text in the top left corner of the cluster
                 for i, cluster in enumerate(clusters):
                         ax.text(cluster[1] - cluster_size, cluster[0] - cluster_size -5, i+1, color='r')
+    fig.set_size_inches(size[0], size[1])
 
     # Axis off
     ax.axis('off')

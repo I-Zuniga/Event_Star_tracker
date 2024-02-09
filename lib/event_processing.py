@@ -300,7 +300,7 @@ def order_by_main_dist(main_cluster, clusters):
 
     return clusters
 
-def get_star_features(star_list, ref_pixel_to_deg = 0.005319449742301844, reference_FOV = 2, recording_FOV = 10):
+def get_star_features(star_list, ref_pixel_to_deg = 1, reference_FOV = 1, recording_FOV = 1):
     ''' 
        Compute the star features for the first star of the list. The star list shoud be ordered by the 
        distance to the first star. 
@@ -323,16 +323,18 @@ def get_star_features(star_list, ref_pixel_to_deg = 0.005319449742301844, refere
     star_features_1 = []
     star_features_2 = []
 
-    # Compute the x and y distance between the each star and the rest of the stars
-
+#  Center the star list in the mean position (avoid traslation problems)
+    star_list = star_list - np.mean(star_list, axis=0)
 
     for j in range(len(star_list)):
         if j != 0:
             # Log polar transform
-            star_features_1.extend(log_polar_transform(star_list[0][1], star_list[0][0], star_list[j][1], star_list[j][0]))
+            pass # CHANGE THIS
+            # star_features_1.extend(log_polar_transform(star_list[0][0], star_list[0][1], star_list[j][0], star_list[j][1]))
         # Compute distance btwen each neirbour star (permutation)
         for k in range(j+1,len(star_list)):
             star_features_2.append( np.linalg.norm(star_list[k] - star_list[j]) )
+            star_features_1.append( np.log(star_features_2[-1]) )
 
     pixel_to_deg = ref_pixel_to_deg * recording_FOV/reference_FOV
     # Pixels to deegres 
