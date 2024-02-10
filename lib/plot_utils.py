@@ -91,6 +91,50 @@ def plot_cluster(img, clusters, cluster_size, size = [10, 7]):
     # Show the plot
     plt.show()
 
+def plot_cluster_with_id(img, clusters, ids, size = [10, 7]):
+    '''
+    Plot the clusters on the image. 
+
+        Parameters
+        ----------
+        img : numpy array
+            Image to be filtered.
+        clusters : list
+                List of clusters. Each cluster is a list with the following structure:
+                        [ [x_pixel, y_pixel], cluster comulative mass, inital cluster position [x_max, y_max] ]
+        ids : list
+                ids of identified stars.
+        size : list 
+                Size of the image.
+
+        Returns
+        -------
+        None.
+    '''
+    # Create figure and axes 
+    fig, ax = plt.subplots()
+    # Display the image
+    ax.imshow(img, cmap='gray')
+
+    # If the clusters are in the full cluster form [ [x_pixel, y_pixel], cluster comulative mass, inital cluster position [x_max, y_max] ]
+    if len(clusters[0]) > 2:
+        print('Error: clusters in full form not implemented yet')           
+    # If cluster is only cluster position [x_pixel, y_pixel]
+    elif len(clusters[0]) == 2:
+        for cluster in clusters:
+                # Plot a red cross on the initial position of the clusters
+                ax.plot([cluster[1] - 2, cluster[1] + 2],
+                        [cluster[0] - 2, cluster[0] + 2], 'r')
+                # Plot the cluster number as text in the top left corner of the cluster
+                for i, cluster in enumerate(clusters):
+                        ax.text(cluster[1] - 5, cluster[0]  -5, ids[i], color='r')
+    fig.set_size_inches(size[0], size[1])
+
+    # Axis off
+    ax.axis('off')
+    # Show the plot
+    plt.show()
+
 def plot_cluster_comparation(img, clusters_batchs, cluster_size):
     '''
     Plot the clusters on the image. 

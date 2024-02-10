@@ -16,18 +16,20 @@ from scipy.spatial import KDTree
 from lib.utils import *
 from lib.event_processing import *
 
+import time 
+
 # Define a function to predict the star ID for a given feature vector
-def predict_star_id(features, features_array, dictionary, som):
-    normalized_feature = (features - features_array.min(axis=0)) / (features_array.max(axis=0) - features_array.min(axis=0))
-    winner = som.winner(normalized_feature)
-    if winner in dictionary:
-        return dictionary[winner]
-    else:
-        return [0] #The neuron has no star ID return [0], the ID start at 1 
+# def predict_star_id(features, features_array, dictionary, som):
+#     normalized_feature = (features - features_array.min(axis=0)) / (features_array.max(axis=0) - features_array.min(axis=0))
+#     winner = som.winner(normalized_feature)
+#     if winner in dictionary:
+#         return dictionary[winner]
+#     else:
+#         return [0] #The neuron has no star ID return [0], the ID start at 1 
     
 # Normalize the data -> better performace of the SOM 
 def normalize_features(star_features):
-    star_features_normalized = (star_features - star_features.min(axis=0)) / (star_features.max(axis=0) - star_features.min(axis=0))
+    star_features_normalized = (star_features - star_features.min()) / (star_features.max() - star_features.min())
     return star_features_normalized
 
 # Another dict for map neurons to star (just to check), same as star_ids but created from som.winner rather than som.winner_map
@@ -63,7 +65,7 @@ def train(hyperparameters):
     # As this is used only for the training of the SOM performace is not needed
     tree = KDTree(stars_data[:,1:3])
 
-    n_of_neighbor = 4 # Number of neighborhoods stars used to compute the features
+    n_of_neighbor = hyperparameters['n_of_neighbors'] # Number of neighborhoods stars used to compute the features
 
     # Find the 5 closest neighbors for each star
     distances, indices = tree.query(stars_data[:,1:3], k=n_of_neighbor+1)
@@ -79,17 +81,7 @@ def train(hyperparameters):
         features_1 = []
         features_2 = []
 
-        for j in range(1,n_of_neighbor+1):
-            neighbor_index = indices[i][j]
-
-            #  Define the features vector that is going to be used in the SOM:
-            features_1.extend(log_polar_transform(stars_data[i][1], stars_data[i][2], stars_data[neighbor_index][1], stars_data[neighbor_index][2]) )
-                
-            for k in range(1 +j-1,n_of_neighbor+1):
-                features_2.append( np.sqrt( (stars_data[indices[i][k]][1] - stars_data[indices[i][j-1]][1])**2
-                                +(stars_data[indices[i][k]][2] - stars_data[indices[i][j-1]][2])**2 )
-                                ) 
-
+        features_1, features_2 = get_star_features(stars_data[indices[i][0:n_of_neighbor+1]][:,1:3], 1, 1, 1)
         features_vec_1.append(features_1)
         features_vec_2.append(features_2)
 
@@ -136,8 +128,6 @@ def train(hyperparameters):
     som1.train_random(data=features_1_n, num_iteration=100000)
     som2.train_random(data=features_2_n, num_iteration=100000)
 
-    som1.quantization_error
-
     star_dict_1= {}
     star_dict_2= {}
 
@@ -145,38 +135,52 @@ def train(hyperparameters):
         star_dict_1 = add_values_in_dict(star_dict_1, som1.winner(features_1_n[i]),[i])
         star_dict_2 = add_values_in_dict(star_dict_2, som2.winner(features_2_n[i]),[i])
 
-    cont = np.zeros(3) # [Correct match, miss match, multiple match]
-    mean_noise = 0
-    for i in range(features_vec_1.shape[0]):
 
-        # Itroduce noise in the features vector to check the response of the SOM
-        scale = 0.005 # % respect max value 
+    # Test the SOMs
+    cont = np.zeros(5) # [Correct match, miss match, multiple match, correct SOM1, correct SOM2]
+    stars_pos = np.copy(stars_data[:,1:3])
+    noise= np.random.normal(loc=1, scale=0.001, size=stars_pos.shape)
+    mean_noise = np.mean(np.abs(1-noise), axis=0)
+    mean_time = 0
+    stars_pos *= noise
 
-        noise_1 = np.random.normal(loc=0, scale=1, size=features_vec_1.shape[1])*np.max(features_vec_1[i])*scale
-        noise_2 = np.random.normal(loc=0, scale=1, size=features_vec_2.shape[1])*np.max(features_vec_2[i])*scale
-        sample_feature_1= features_vec_1[i] - noise_1
-        sample_feature_2= features_vec_2[i] - noise_2
+    for i in range(len(stars_pos)):
+        
+        time_start = time.time()
 
-        mean_noise += np.mean( np.abs(noise_1)/features_vec_1[i] ) + np.mean( np.abs(noise_2)/features_vec_2[i] ) 
+        features_1 = []
+        features_2 = []
+            
 
-        predicted_star_ids_1 = predict_star_id(sample_feature_1,np.array(features_vec_1),star_dict_1,som1)
-        predicted_star_ids_2 = predict_star_id(sample_feature_2,np.array(features_vec_2),star_dict_2,som2)
+        features_1, features_2 = get_star_features(stars_pos[indices[i][0:n_of_neighbor+1]], 1, 1, 1)
 
+        predicted_star_ids_1 = predict_star_id(features_1, [features_vec_1.min(), features_vec_1.max()], star_dict_1, som1)
+        predicted_star_ids_2 = predict_star_id(features_2, [features_vec_2.min(), features_vec_2.max()], star_dict_2, som2)
+        if i in predicted_star_ids_1:
+            cont[3] += 1
+        if i in predicted_star_ids_2:
+            cont[4] += 1
+        
         star_guess = list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))
         if len(list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))) == 1:
             cont[0] += star_guess[0] == i
+            cont[1] += star_guess[0] != i
         else:
             # print("Error: ", list(set(predicted_star_ids_1).intersection(predicted_star_ids_2)), "!=", i)
             cont[1] += len(star_guess) == 0
             cont[2] += len(star_guess) > 1
-    mean_noise = mean_noise / features_vec_1.shape[0] / 2
+
+        mean_time += time.time() - time_start #Time cont end
+   
+
+    # mean_noise = mean_noise / features_vec_1.shape[0] / 2
 
 
-    opt_1 = len(som1.win_map(features_1_n)) / hyperparameters['mesh_size_1']**2
-    opt_2 = len(som2.win_map(features_2_n)) / hyperparameters['mesh_size_2']**2
+    # opt_1 = len(som1.win_map(features_1_n)) / hyperparameters['mesh_size_1']**2
+    # opt_2 = len(som2.win_map(features_2_n)) / hyperparameters['mesh_size_2']**2
     opt_3 = cont[0] / features_vec_1.shape[0]
 
-    return opt_1, opt_2
+    return opt_3
 
 
 def train_som1(hyperparameters):

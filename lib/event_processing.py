@@ -322,25 +322,29 @@ def get_star_features(star_list, ref_pixel_to_deg = 1, reference_FOV = 1, record
     '''  
     star_features_1 = []
     star_features_2 = []
+    pixel_to_deg = ref_pixel_to_deg * recording_FOV/reference_FOV
+    star_list = np.array(star_list) * pixel_to_deg
 
 #  Center the star list in the mean position (avoid traslation problems)
     star_list = star_list - np.mean(star_list, axis=0)
+    star_list = star_list - star_list[0]
+
 
     for j in range(len(star_list)):
         if j != 0:
             # Log polar transform
-            pass # CHANGE THIS
-            # star_features_1.extend(log_polar_transform(star_list[0][0], star_list[0][1], star_list[j][0], star_list[j][1]))
+            # pass # CHANGE THIS
+            star_features_1.extend(log_polar_transform(star_list[0],star_list[j], star_list[1]))
         # Compute distance btwen each neirbour star (permutation)
         for k in range(j+1,len(star_list)):
             star_features_2.append( np.linalg.norm(star_list[k] - star_list[j]) )
-            star_features_1.append( np.log(star_features_2[-1]) )
+            # star_features_1.append( np.log(star_features_2[-1]) )
 
     pixel_to_deg = ref_pixel_to_deg * recording_FOV/reference_FOV
     # Pixels to deegres 
-    star_features_1[::2] += np.log(pixel_to_deg)  # Only the r component is scaled (in log) as theta is in radians
-    star_features_1 = np.array(star_features_1)
-    star_features_2 = np.array(star_features_2)*pixel_to_deg
+    # star_features_1[::2] += np.log(pixel_to_deg)  # Only the r component is scaled (in log) as theta is in radians
+    star_features_1 = np.array(star_features_1) 
+    star_features_2 = np.array(star_features_2)
 
     return star_features_1, star_features_2
 
@@ -409,7 +413,7 @@ def test_get_features():
     print('Test error 2:', np.array(test_sol_2) - np.array(features_2))
 
 
-def log_polar_transform(x0, y0, x, y):
+def log_polar_transform(main_point, secondary_point, axis_ref):
     ''' 
     Transforms x, y coordinates to log polar coordinates
     
@@ -424,8 +428,11 @@ def log_polar_transform(x0, y0, x, y):
         Log polar coordinates
         
     '''
-    r = np.log(np.sqrt((x - x0)**2 + (y - y0)**2) )
-    theta = ( np.arctan2(y, x) - np.arctan2(y0, x0) + 2 * np.pi) % (2 * np.pi)
+
+    r = np.log( np.linalg.norm(main_point - secondary_point))
+    theta = ( np.arctan2(secondary_point[1],secondary_point[0]) - np.arctan2(axis_ref[1],axis_ref[0]) + 2 * np.pi) % (2 * np.pi)
+    # r = np.log(np.sqrt((x - x0)**2 + (y - y0)**2) )
+    # theta = ( np.arctan2(y, x) - np.arctan2(y0, x0) + 2 * np.pi) % (2 * np.pi)
 
     
     return r, theta

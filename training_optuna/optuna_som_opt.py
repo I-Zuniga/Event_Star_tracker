@@ -29,10 +29,10 @@ from lib.som_training import *
 
 def objective(trial):
     # Number of layers and units per layer for actor
-    # mesh_size_1 = trial.suggest_int('mesh_size_1', 67,68)
-    # mesh_size_2 = trial.suggest_int('mesh_size_2', 67,68)
-    mesh_size_1 = 68
-    mesh_size_2 = 68
+    mesh_size_1 = trial.suggest_int('mesh_size_1', 30,67)
+    mesh_size_2 = trial.suggest_int('mesh_size_2', 30,67)
+    # mesh_size_1 = 40
+    # mesh_size_2 = 40
 
     sigma = trial.suggest_float('sigma', 1, 10)
     learning_rate = trial.suggest_float('learning_rate', 0.2, 2)
@@ -41,6 +41,9 @@ def objective(trial):
     topology = trial.suggest_categorical('topology', ['hexagonal', 'rectangular'])
     activation_distance = trial.suggest_categorical('activation_distance', ['euclidean', 'manhattan'])
     
+    # n_of_neighbors = trial.suggest_int('n_of_neighbors', 3,6)
+
+
     hyperparameters = {
         'mesh_size_1': mesh_size_1,
         'mesh_size_2': mesh_size_2,
@@ -48,10 +51,11 @@ def objective(trial):
         'learning_rate': learning_rate,
         'neighborhood_function': neighborhood_function,
         'topology': topology,
-        'activation_distance': activation_distance
+        'activation_distance': activation_distance,
+        'n_of_neighbors' : 4,
     }
 
-    accuracy = train_som2(hyperparameters)
+    accuracy = train(hyperparameters)
 
     # Handle pruning based on the intermediate value.    
     # if trial.should_prune():
@@ -65,12 +69,13 @@ def objective(trial):
 print("Study statistics: ")
 
 study = optuna.create_study(
-    direction='maximize',
+    direction='maximize', # single objective
+    # directions=['maximize', 'minimize'], # multi-objective
     storage="sqlite:///db.sqlite3",
-    study_name="som2_size_68x68",
+    study_name="features_log_polar_euclidean_4_neighbors",
     load_if_exists=True,
     )
-study.optimize(objective, n_trials=150)  # You can adjust the number of trials
+study.optimize(objective, n_trials=1000)  # You can adjust the number of trials
 
 
 # pruned_trials = study.get_trials(states=(optuna.trial.TrialState.PRUNED,))
