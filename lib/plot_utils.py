@@ -91,7 +91,7 @@ def plot_cluster(img, clusters, cluster_size, size = [10, 7]):
     # Show the plot
     plt.show()
 
-def plot_cluster_with_id(img, clusters, ids, size = [10, 7]):
+def plot_cluster_with_id(img, clusters, ids, size = [10, 7], center = False):
     '''
     Plot the clusters on the image. 
 
@@ -128,7 +128,15 @@ def plot_cluster_with_id(img, clusters, ids, size = [10, 7]):
                 # Plot the cluster number as text in the top left corner of the cluster
                 for i, cluster in enumerate(clusters):
                         ax.text(cluster[1] - 5, cluster[0]  -5, ids[i], color='r')
+    
     fig.set_size_inches(size[0], size[1])
+
+        #Plot the center of the image and the axis
+    if center:
+        ax.plot([img.shape[1]//2, img.shape[1]//2],
+                [0, img.shape[0]], 'g')
+        ax.plot([0, img.shape[1]],
+                [img.shape[0]//2, img.shape[0]//2], 'g')
 
     # Axis off
     ax.axis('off')

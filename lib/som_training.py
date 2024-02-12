@@ -12,6 +12,7 @@ from minisom import MiniSom
 import sys
 import platform
 from scipy.spatial import KDTree
+import pickle
 
 from lib.utils import *
 from lib.event_processing import *
@@ -41,9 +42,8 @@ def add_values_in_dict(sample_dict, key, list_of_values):
     sample_dict[key].extend(list_of_values)
     return sample_dict
 
-def train(hyperparameters):
-    ## Select the dataset type: 'random' or 'tycho'
-    # stars_data = utils.get_star_dataset(type ='random', n_stars = 4000)
+def train(hyperparameters_1, hyperparameters_2):
+    # Select the dataset type: 'random' or 'tycho'
     catalog_path = '../data/catalogs/tycho2_VT_6.csv'
     stars_data = get_star_dataset(type ='tycho', path = catalog_path)
 
@@ -56,16 +56,7 @@ def train(hyperparameters):
     # As this is used only for the training of the SOM performace is not needed
     tree = KDTree(stars_data[:,1:3])
 
-    n_of_neighbor = 4 # Number of neighborhoods stars used to compute the features
-
-    # Find the 5 closest neighbors for each star
-    distances, indices = tree.query(stars_data[:,1:3], k=n_of_neighbor+1)
-
-    # Create the k-d tree to find the nearest neighborhoods of the center stars
-    # As this is used only for the training of the SOM performace is not needed
-    tree = KDTree(stars_data[:,1:3])
-
-    n_of_neighbor = hyperparameters['n_of_neighbors'] # Number of neighborhoods stars used to compute the features
+    n_of_neighbor = hyperparameters_1['n_of_neighbors'] # Number of neighborhoods stars used to compute the features
 
     # Find the 5 closest neighbors for each star
     distances, indices = tree.query(stars_data[:,1:3], k=n_of_neighbor+1)
@@ -86,7 +77,8 @@ def train(hyperparameters):
         features_vec_2.append(features_2)
 
 
-    ## SINGLE TRAINING ##
+    # ## SINGLE TRAINING ##
+
 
     features_vec_1 = np.array(features_vec_1)
     features_vec_2 = np.array(features_vec_2)
@@ -94,39 +86,41 @@ def train(hyperparameters):
     features_1_n = normalize_features(np.array(features_vec_1))
     features_2_n = normalize_features(np.array(features_vec_2))
 
+
     # Must be more neurons that points -> sqrt of data size to set the mesh: data < som_rows * som_cols
     # mesh_size = int(np.sqrt(features_1_n.shape[0])/2)
     # Manual set 
 
     # Initialize the SOM
     som1 = MiniSom(
-        x = hyperparameters['mesh_size_1'],
-        y = hyperparameters['mesh_size_1'],
+        x = hyperparameters_1['mesh_size_1'],
+        y = hyperparameters_1['mesh_size_1'],
         input_len = features_1_n.shape[1],
 
-        sigma=hyperparameters['sigma'],
-        learning_rate=hyperparameters['learning_rate'],
-        neighborhood_function=hyperparameters['neighborhood_function'],
-        topology=hyperparameters['topology'],
-        activation_distance=hyperparameters['activation_distance']
+        sigma=hyperparameters_1['sigma'],
+        learning_rate=hyperparameters_1['learning_rate'],
+        neighborhood_function=hyperparameters_1['neighborhood_function'],
+        topology=hyperparameters_1['topology'],
+        activation_distance=hyperparameters_1['activation_distance']
 
     )
 
     som2 = MiniSom(
-        x = hyperparameters['mesh_size_2'],
-        y = hyperparameters['mesh_size_2'],
+        x = hyperparameters_2['mesh_size_2'],
+        y = hyperparameters_2['mesh_size_2'],
         input_len = features_2_n.shape[1],
 
-        sigma=hyperparameters['sigma'],
-        learning_rate=hyperparameters['learning_rate'],
-        neighborhood_function=hyperparameters['neighborhood_function'],
-        topology=hyperparameters['topology'],
-        activation_distance=hyperparameters['activation_distance']
+        sigma=hyperparameters_2['sigma'],
+        learning_rate=hyperparameters_2['learning_rate'],
+        neighborhood_function=hyperparameters_2['neighborhood_function'],
+        topology=hyperparameters_2['topology'],
+        activation_distance=hyperparameters_2['activation_distance']
     )
 
     # Train the SOM
-    som1.train_random(data=features_1_n, num_iteration=100000)
-    som2.train_random(data=features_2_n, num_iteration=100000)
+    
+    som1.train_random(data=features_1_n, num_iteration=hyperparameters_1['epochs'])
+    som2.train_random(data=features_2_n, num_iteration=hyperparameters_2['epochs'])
 
     star_dict_1= {}
     star_dict_2= {}
@@ -154,19 +148,19 @@ def train(hyperparameters):
 
         features_1, features_2 = get_star_features(stars_pos[indices[i][0:n_of_neighbor+1]], 1, 1, 1)
 
-        predicted_star_ids_1 = predict_star_id(features_1, [features_vec_1.min(), features_vec_1.max()], star_dict_1, som1)
+        winner_ids_1 = predict_star_id(features_1, [features_vec_1.min(), features_vec_1.max()], star_dict_1, som1)
         predicted_star_ids_2 = predict_star_id(features_2, [features_vec_2.min(), features_vec_2.max()], star_dict_2, som2)
-        if i in predicted_star_ids_1:
+        if i in winner_ids_1:
             cont[3] += 1
         if i in predicted_star_ids_2:
             cont[4] += 1
         
-        star_guess = list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))
-        if len(list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))) == 1:
+        star_guess = list(set(winner_ids_1).intersection(predicted_star_ids_2))
+        if len(list(set(winner_ids_1).intersection(predicted_star_ids_2))) == 1:
             cont[0] += star_guess[0] == i
             cont[1] += star_guess[0] != i
         else:
-            # print("Error: ", list(set(predicted_star_ids_1).intersection(predicted_star_ids_2)), "!=", i)
+            # print("Error: ", list(set(winner_ids_1).intersection(predicted_star_ids_2)), "!=", i)
             cont[1] += len(star_guess) == 0
             cont[2] += len(star_guess) > 1
 
@@ -179,8 +173,10 @@ def train(hyperparameters):
     # opt_1 = len(som1.win_map(features_1_n)) / hyperparameters['mesh_size_1']**2
     # opt_2 = len(som2.win_map(features_2_n)) / hyperparameters['mesh_size_2']**2
     opt_3 = cont[0] / features_vec_1.shape[0]
+    opt_4 = cont[3] / features_vec_1.shape[0]
+    opt_5 = cont[4] / features_vec_1.shape[0]
 
-    return opt_3
+    return opt_3, opt_4, opt_5
 
 
 def train_som1(hyperparameters):

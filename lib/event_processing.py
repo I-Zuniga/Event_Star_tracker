@@ -275,7 +275,7 @@ def order_by_center_dist(clusters, img_shape):
     return clusters, clusters_dist
 
 
-def order_by_main_dist(main_cluster, clusters):
+def order_by_main_dist(main_cluster, clusters, get_index = False):
     '''
     Order the clusters by distance to the main cluster
     
@@ -296,9 +296,16 @@ def order_by_main_dist(main_cluster, clusters):
             '''
     
     # Order the clusters by distance to the main cluster
-    clusters = sorted(clusters, key=lambda x: np.linalg.norm(x[0] - main_cluster[0]), reverse=False)
+    sorted_clusters = sorted(clusters, key=lambda x: np.linalg.norm(x[0] - main_cluster[0]), reverse=False)
 
-    return clusters
+    #Get the index of the odered clusters in the original list
+    if get_index:
+        sorted_clusters_index = []
+        for id, cluster in enumerate([x[1] for x in sorted_clusters]):
+            sorted_clusters_index.append([x[1] for x in clusters].index(cluster))
+        return sorted_clusters, sorted_clusters_index
+
+    return sorted_clusters
 
 def get_star_features(star_list, ref_pixel_to_deg = 1, reference_FOV = 1, recording_FOV = 1):
     ''' 
@@ -349,8 +356,21 @@ def get_star_features(star_list, ref_pixel_to_deg = 1, reference_FOV = 1, record
     return star_features_1, star_features_2
 
 
+def get_second(som, x):
+    """Computes the coordinates of the winning neuron for the sample x."""
+    activation_map = som.activate(x)
+    # Get the second best matching unit
+    return np.unravel_index(activation_map.argsort(axis=None)[1],
+                             activation_map.shape)
+
+def get_two_winners(som, x):
+    """Computes the coordinates of the winning neuron for the sample x."""
+    activation_map = som.activate(x)
+    # Get the second best matching unit
+    return np.unravel_index(activation_map.argsort(axis=None)[0],activation_map.shape), np.unravel_index(activation_map.argsort(axis=None)[1],activation_map.shape)
+
 # Define a function to predict the star ID for a given feature vector
-def predict_star_id(features, norm_param, dictionary, som):
+def predict_star_id(features, norm_param, dictionary, som, two_best_bmu = False):
     """
     Predict the star ID for a given feature vector.
 
@@ -370,15 +390,26 @@ def predict_star_id(features, norm_param, dictionary, som):
     star_id : int
         Star ID.
     """
-    
-    normalized_feature = (features - norm_param[0]) / (norm_param[1] - norm_param[0])
-    winner = som.winner(normalized_feature)
-    if winner in dictionary:
-        return dictionary[winner]
-    else:
-        return [0] #The neuron has no star ID return [0], the ID start at 1 
-    
 
+    normalized_feature = (features - norm_param[0]) / (norm_param[1] - norm_param[0])
+    if two_best_bmu == False:
+        winner = som.winner(normalized_feature)
+        if winner in dictionary:
+            return dictionary[winner]
+        else:
+            return [0] #The neuron has no star ID return [0], the ID starts at 1 
+    else:
+        winner, second = get_two_winners(som, normalized_feature)
+        if winner in dictionary:
+            if second in dictionary:
+                return dictionary[winner], dictionary[second]
+            else:
+                return dictionary[winner], [0] #The neuron has no star ID return [0], the ID starts at 1 
+        else:
+            if second in dictionary:
+                return [0], dictionary[second]
+            else:
+                return [0], [0] #The neuron has no star ID return [0], the ID starts at 1 
 
 def test_get_features(): 
     '''

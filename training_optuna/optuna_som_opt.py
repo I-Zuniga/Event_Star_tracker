@@ -29,33 +29,48 @@ from lib.som_training import *
 
 def objective(trial):
     # Number of layers and units per layer for actor
-    mesh_size_1 = trial.suggest_int('mesh_size_1', 30,67)
-    mesh_size_2 = trial.suggest_int('mesh_size_2', 30,67)
-    # mesh_size_1 = 40
-    # mesh_size_2 = 40
 
-    sigma = trial.suggest_float('sigma', 1, 10)
-    learning_rate = trial.suggest_float('learning_rate', 0.2, 2)
-
-    neighborhood_function = trial.suggest_categorical('neighborhood_function', ['gaussian', 'bubble', 'triangle'])
-    topology = trial.suggest_categorical('topology', ['hexagonal', 'rectangular'])
-    activation_distance = trial.suggest_categorical('activation_distance', ['euclidean', 'manhattan'])
-    
-    # n_of_neighbors = trial.suggest_int('n_of_neighbors', 3,6)
+    # SOM 1 
+    mesh_size_1 = trial.suggest_int('mesh_size_1', 67,90)
+    sigma_1 = trial.suggest_float('sigma_1', 1, 10)
+    learning_rate_1 = trial.suggest_float('learning_rate', 0.2, 2)
+    neighborhood_function_1 = trial.suggest_categorical('neighborhood_function_1', ['gaussian', 'bubble', 'triangle'])
+    topology_1 = trial.suggest_categorical('topology_1', ['hexagonal', 'rectangular'])
+    activation_distance_1 = trial.suggest_categorical('activation_distance_1', ['euclidean', 'manhattan'])
 
 
-    hyperparameters = {
+    mesh_size_2 = trial.suggest_int('mesh_size_2', 67,90)
+    sigma_2 = trial.suggest_float('sigma_2', 1, 10)
+    learning_rate_2 = trial.suggest_float('learning_rate', 0.2, 2)
+    neighborhood_function_2 = trial.suggest_categorical('neighborhood_function_2', ['gaussian', 'bubble', 'triangle'])
+    topology_2 = trial.suggest_categorical('topology_2', ['hexagonal', 'rectangular'])
+    activation_distance_2 = trial.suggest_categorical('activation_distance_2', ['euclidean', 'manhattan'])
+
+
+
+    hyperparameters_1 = {
         'mesh_size_1': mesh_size_1,
-        'mesh_size_2': mesh_size_2,
-        'sigma': sigma,
-        'learning_rate': learning_rate,
-        'neighborhood_function': neighborhood_function,
-        'topology': topology,
-        'activation_distance': activation_distance,
+        'sigma': sigma_1,
+        'learning_rate': learning_rate_1,
+        'neighborhood_function': neighborhood_function_1,
+        'topology': topology_1,
+        'activation_distance': activation_distance_1,
         'n_of_neighbors' : 4,
+        'epochs' : 150000,
     }
 
-    accuracy = train(hyperparameters)
+    hyperparameters_2 = {
+        'mesh_size_2': mesh_size_2,
+        'sigma': sigma_2,
+        'learning_rate': learning_rate_2,
+        'neighborhood_function': neighborhood_function_2,
+        'topology': topology_2,
+        'activation_distance': activation_distance_2,
+        'n_of_neighbors' : 4,
+        'epochs' : 150000,
+    }
+
+    accuracy = train(hyperparameters_1, hyperparameters_2)
 
     # Handle pruning based on the intermediate value.    
     # if trial.should_prune():
@@ -69,13 +84,13 @@ def objective(trial):
 print("Study statistics: ")
 
 study = optuna.create_study(
-    direction='maximize', # single objective
-    # directions=['maximize', 'minimize'], # multi-objective
+    # direction='maximize', # single objective
+    directions=['maximize', 'maximize','maximize'], # multi-objective
     storage="sqlite:///db.sqlite3",
-    study_name="features_log_polar_euclidean_4_neighbors",
+    study_name="big_soms_multi_hyperparameters",
     load_if_exists=True,
     )
-study.optimize(objective, n_trials=1000)  # You can adjust the number of trials
+study.optimize(objective, n_trials=100)  # You can adjust the number of trials
 
 
 # pruned_trials = study.get_trials(states=(optuna.trial.TrialState.PRUNED,))
