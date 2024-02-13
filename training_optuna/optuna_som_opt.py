@@ -33,7 +33,7 @@ def objective(trial):
     # SOM 1 
     mesh_size_1 = trial.suggest_int('mesh_size_1', 67,90)
     sigma_1 = trial.suggest_float('sigma_1', 1, 10)
-    learning_rate_1 = trial.suggest_float('learning_rate', 0.2, 2)
+    learning_rate_1 = trial.suggest_float('learning_rate_1', 0.2, 2)
     neighborhood_function_1 = trial.suggest_categorical('neighborhood_function_1', ['gaussian', 'bubble', 'triangle'])
     topology_1 = trial.suggest_categorical('topology_1', ['hexagonal', 'rectangular'])
     activation_distance_1 = trial.suggest_categorical('activation_distance_1', ['euclidean', 'manhattan'])
@@ -41,7 +41,7 @@ def objective(trial):
 
     mesh_size_2 = trial.suggest_int('mesh_size_2', 67,90)
     sigma_2 = trial.suggest_float('sigma_2', 1, 10)
-    learning_rate_2 = trial.suggest_float('learning_rate', 0.2, 2)
+    learning_rate_2 = trial.suggest_float('learning_rate_1', 0.2, 2)
     neighborhood_function_2 = trial.suggest_categorical('neighborhood_function_2', ['gaussian', 'bubble', 'triangle'])
     topology_2 = trial.suggest_categorical('topology_2', ['hexagonal', 'rectangular'])
     activation_distance_2 = trial.suggest_categorical('activation_distance_2', ['euclidean', 'manhattan'])

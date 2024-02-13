@@ -149,18 +149,18 @@ def train(hyperparameters_1, hyperparameters_2):
         features_1, features_2 = get_star_features(stars_pos[indices[i][0:n_of_neighbor+1]], 1, 1, 1)
 
         winner_ids_1 = predict_star_id(features_1, [features_vec_1.min(), features_vec_1.max()], star_dict_1, som1)
-        predicted_star_ids_2 = predict_star_id(features_2, [features_vec_2.min(), features_vec_2.max()], star_dict_2, som2)
-        if i in winner_ids_1:
+        winner_ids_2 = predict_star_id(features_2, [features_vec_2.min(), features_vec_2.max()], star_dict_2, som2)
+        if i in winner_ids_1 and len(winner_ids_1) < 20:
             cont[3] += 1
-        if i in predicted_star_ids_2:
+        if i in winner_ids_2 and len(winner_ids_2) < 20:
             cont[4] += 1
         
-        star_guess = list(set(winner_ids_1).intersection(predicted_star_ids_2))
-        if len(list(set(winner_ids_1).intersection(predicted_star_ids_2))) == 1:
+        star_guess = list(set(winner_ids_1).intersection(winner_ids_2))
+        if len(list(set(winner_ids_1).intersection(winner_ids_2))) == 1:
             cont[0] += star_guess[0] == i
             cont[1] += star_guess[0] != i
         else:
-            # print("Error: ", list(set(winner_ids_1).intersection(predicted_star_ids_2)), "!=", i)
+            # print("Error: ", list(set(winner_ids_1).intersection(winner_ids_2)), "!=", i)
             cont[1] += len(star_guess) == 0
             cont[2] += len(star_guess) > 1
 

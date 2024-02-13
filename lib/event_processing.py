@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 
+from scipy.optimize import minimize
+
 
 def blend_buffer(frames_buffer, mirror = False):
     ''' Get a frame buffer and compacts it into a single frame
@@ -465,5 +467,67 @@ def log_polar_transform(main_point, secondary_point, axis_ref):
     # r = np.log(np.sqrt((x - x0)**2 + (y - y0)**2) )
     # theta = ( np.arctan2(y, x) - np.arctan2(y0, x0) + 2 * np.pi) % (2 * np.pi)
 
-    
     return r, theta
+
+def distance(x_c, y_c, points):
+    '''Calculate the distance of the points to the center of the image'''
+    return np.sqrt((points[:, 0] - x_c)**2 + (points[:, 1] - y_c)**2)
+
+def objective(point_c, *args):
+    ''' Objective function to minimize the distance of the points to the center of the image'''
+    points, distances = args
+    x_c, y_c = point_c
+    return np.sum((distance(x_c, y_c, points) - distances)**2)
+
+def solve_point_c(points, distances):
+    '''Solve the center of the image'''
+    initial_guess = np.mean(points, axis=0)  # Initial guess for [x_c, y_c]
+    result = minimize(objective, initial_guess, args=(points, distances))
+    return result.x
+
+
+def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_image, extend_puzzle = False):
+    ''' Check the star id by comparing the neighbours of the star and the dataset neighbours.
+
+    Parameters
+    ----------
+    indices_neigh_gt : np.array
+        List of the neighbours of the stars in the ground truth.
+    indices_neigh_image : np.array
+        List of the neighbours of the stars in the dataset.
+    indices_image : np.array
+        List of the stars in the dataset.
+    extend_puzzle : bool
+        If True, the function returns the star id with the neighbours. If False, the function returns the star id without the neighbours.
+
+    Returns
+    -------
+    confirmed_stars_ids : np.array
+        List of the confirmed stars ids.
+
+    '''
+
+    check_points = np.zeros((len(indices_neigh_gt)))
+
+    for i in range(len(indices_neigh_gt)): # For all clustes that are not None
+        if indices_neigh_gt[i][0] is not None:
+            for j in range(1,len(indices_neigh_image[i])): # For all the neighbours of the cluster [1,5]
+                if indices_neigh_image[i][j] == indices_neigh_gt[i][j]: # If neighbours MATCH +1 for the star and the neighbour 
+                    check_points[i] += 1
+                    check_points[indices_image[i][j]] += 1
+                # elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
+                #     check_points[i] -= 1
+                #     check_points[indices_image[i][j]] -= 1
+                #     break
+
+    confirmed_indices = [i for i in range(len(check_points)) if check_points[i] > 0] # Index of original list of confrimed stars
+    confirmed_stars_ids = np.full(len(indices_neigh_gt), None)
+
+    if extend_puzzle:
+        for index in confirmed_indices:
+            confirmed_stars_ids[indices_image[index].tolist()] =  indices_neigh_gt[index] # WITH IDS NOT HIP NUMBER 
+    else:
+        for index in confirmed_indices:
+            confirmed_stars_ids[index] = indices_neigh_gt[index][0] # WITH IDS NOT HIP NUMBER 
+
+    return confirmed_stars_ids
