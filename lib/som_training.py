@@ -13,9 +13,11 @@ import sys
 import platform
 from scipy.spatial import KDTree
 import pickle
+import optuna
 
 from lib.utils import *
 from lib.event_processing import *
+
 
 import time 
 
@@ -42,7 +44,7 @@ def add_values_in_dict(sample_dict, key, list_of_values):
     sample_dict[key].extend(list_of_values)
     return sample_dict
 
-def train(hyperparameters_1, hyperparameters_2):
+def train(hyperparameters_1, hyperparameters_2, trial):
     # Select the dataset type: 'random' or 'tycho'
     catalog_path = '../data/catalogs/tycho2_VT_6.csv'
     stars_data = get_star_dataset(type ='tycho', path = catalog_path)
@@ -120,14 +122,24 @@ def train(hyperparameters_1, hyperparameters_2):
     # Train the SOM
     
     som1.train_random(data=features_1_n, num_iteration=hyperparameters_1['epochs'])
-    som2.train_random(data=features_2_n, num_iteration=hyperparameters_2['epochs'])
-
+    
     star_dict_1= {}
-    star_dict_2= {}
-
     for i in range(len(features_1_n)):
         star_dict_1 = add_values_in_dict(star_dict_1, som1.winner(features_1_n[i]),[i])
+
+    # trial.report(len(star_dict_1) / som1._xx.shape[0]*som1._xx.shape[1], 1)
+    if len(star_dict_1) / som1._xx.shape[0]*som1._xx.shape[1] < 0.1:
+        raise optuna.TrialPruned()
+
+    som2.train_random(data=features_2_n, num_iteration=hyperparameters_2['epochs'])
+
+    star_dict_2= {}
+    for i in range(len(features_1_n)):
         star_dict_2 = add_values_in_dict(star_dict_2, som2.winner(features_2_n[i]),[i])
+
+    # trial.report(len(star_dict_2) / som2._xx.shape[0]*som2._xx.shape[1], 1)
+    if len(star_dict_2) / som2._xx.shape[0]*som2._xx.shape[1] < 0.1:
+        raise optuna.TrialPruned()
 
 
     # Test the SOMs
