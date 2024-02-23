@@ -1,4 +1,4 @@
-from metavision_core.event_io import EventsIterator
+
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
