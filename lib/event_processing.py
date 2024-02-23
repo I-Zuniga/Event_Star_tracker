@@ -342,9 +342,8 @@ def get_star_features(star_list, ref_pixel_to_deg = 1, reference_FOV = 1, record
     for j in range(len(star_list)):
         if j != 0:
             # Log polar transform
-            # pass # CHANGE THIS
             star_features_1.extend(log_polar_transform(star_list[0],star_list[j], star_list[1]))
-        # Compute distance btwen each neirbour star (permutation)
+        # Compute distance between each neirbour star (permutation)
         for k in range(j+1,len(star_list)):
             star_features_2.append( np.linalg.norm(star_list[k] - star_list[j]) )
             # star_features_1.append( np.log(star_features_2[-1]) )
