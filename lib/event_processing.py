@@ -131,7 +131,7 @@ def max_value_cluster(img, pixel_range, n_clusters):
         Range of pixels to be considered around the maximun pixel value to perform the center of mass 
         (clustering).
     n_clusters : int
-        Number of clusters to be found.
+        Max number of clusters to be found.
 
     Returns
     -------
@@ -234,11 +234,10 @@ def index_cluster(img, pixel_range, clusters_index):
         cluster_mass = np.sum(values)
 
         # Calculate the cluster centroid
-
         if cluster_mass != 0:
             # Append the cluster to the list
             clusters.append([np.round([cluster_x, cluster_y] / cluster_mass).astype(int)
-                          , cluster_mass, np.array(max_index)])
+                          , cluster_mass])
 
         # Set the pixels within the mask to zero
         filtered_img[mask] = 0
