@@ -2,7 +2,7 @@
  Star traking Attitude Determination via event camara and NN
 
 # To run 
- $ python3 metavision_sdk_get_started.py -i ../data/195_falling_particles.raw
+$ python3 main.py -i ../data/recordings/02_02/recording_2024-02-02_17-21-24_FOV14.3_MAG6.raw --show-video 
 
 # Server 
 $ ssh eventjetson@10.157.95.86
