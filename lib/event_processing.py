@@ -294,17 +294,27 @@ def order_by_main_dist(main_cluster, clusters, get_index = False):
     clusters : list
         List of clusters. Each cluster is a list with the following structure:
         [ [x_pixel, y_pixel], cluster comulative mass, inital cluster position [x_max, y_max] ]
-            '''
+    '''
     
-    # Order the clusters by distance to the main cluster
-    sorted_clusters = sorted(clusters, key=lambda x: np.linalg.norm(x[0] - main_cluster[0]), reverse=False)
+    if type(clusters[0][0]) == np.ndarray : # If the cluster contains also other info 
+        sorted_clusters = sorted(clusters, key=lambda x: np.linalg.norm(x[0] - main_cluster[0]), reverse=False)
 
-    #Get the index of the odered clusters in the original list
-    if get_index:
-        sorted_clusters_index = []
-        for id, cluster in enumerate([x[1] for x in sorted_clusters]):
-            sorted_clusters_index.append([x[1] for x in clusters].index(cluster))
-        return sorted_clusters, sorted_clusters_index
+        #Get the index of the ordered clusters in the original list
+        if get_index:
+            sorted_clusters_index = []
+            for id, cluster in enumerate([x[1] for x in sorted_clusters]):
+                sorted_clusters_index.append([x[1] for x in clusters].index(cluster))
+            return sorted_clusters, sorted_clusters_index
+    
+    elif type(clusters[0][0]) == np.int64 :# If the cluster is only cluster position [x_pixel, y_pixel]
+        sorted_clusters = sorted(clusters, key=lambda x: np.linalg.norm(x - main_cluster), reverse=False)
+        #Get the index of the ordered clusters in the original list
+        if get_index:
+            sorted_clusters_index = []
+            for cluster in [x[1] for x in sorted_clusters]:
+                sorted_clusters_index.append([x[1] for x in clusters].index(cluster))
+            return sorted_clusters, sorted_clusters_index
+
 
     return sorted_clusters
 
@@ -334,7 +344,7 @@ def get_star_features(star_list, ref_pixel_to_deg = 1, reference_FOV = 1, record
     star_list = np.array(star_list) * pixel_to_deg
 
 #  Center the star list in the mean position (avoid traslation problems)
-    star_list = star_list - np.mean(star_list, axis=0)
+    star_list = star_list - np.mean(star_list, axis=0) #TODO: CHECK
     star_list = star_list - star_list[0]
 
 
@@ -392,6 +402,7 @@ def predict_star_id(features, norm_param, dictionary, som, two_best_bmu = False)
     """
 
     normalized_feature = (features - norm_param[0]) / (norm_param[1] - norm_param[0])
+
     if two_best_bmu == False:
         winner = som.winner(normalized_feature)
         if winner in dictionary:
