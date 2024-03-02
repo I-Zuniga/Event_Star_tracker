@@ -58,17 +58,13 @@ def main():
     cluster_frame.load_som_parameters()
     cluster_frame.load_star_catalog()
     cluster_video = ClusterVideo()
-    frames = []
-
-    video_in = args.show_video
+    frames = []  # TODO: Change to np.array?
 
     def on_cd_frame_cb(ts, cd_frame):
         # window.show(cd_frame)
         frames.append(cd_frame)
 
     event_frame_gen.set_output_callback(on_cd_frame_cb)
-
-
 
     for evs in mv_iterator:
         event_frame_gen.process_events(evs)
@@ -81,13 +77,13 @@ def main():
             cluster_frame.compute_ids_predictions()
             cluster_frame.verify_predictions()
             print(cluster_frame.confirmed_stars_ids)
-            if video_in:
+            if args.show_video:
                 close_callbcak = cluster_video.update_frame(cluster_frame.plot_cluster_cv(show_con_ids=True))
                 if close_callbcak:
                     cv2.destroyAllWindows()
                     break
                     
-            frames = []
+            frames.clear()
 
 
 if __name__ == "__main__":
