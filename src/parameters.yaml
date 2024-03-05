@@ -1,0 +1,29 @@
+
+parameters:
+
+  # Paths
+  input_path: "../data/recordings/02_02/recording_2024-02-02_17-21-24_FOV14.3_MAG6.raw"
+  train_path: "../data/recordings/02_02/recording_2024-02-02_17-21-24_FOV14.3_MAG6_train.raw"
+  catalog_folder: 'n67_90_tycho6'
+  star_catalog_path: '../data/catalogs/tycho2_VT_6.csv'
+  
+  # Star detection filtering parameters
+  treshold_filter: 0.0
+  treshold_filter: 0.3
+  mass_treshold: 0.2
+  pixel_range: 15
+
+  # Verbose and visualiation 
+  verbose: True
+  show_video: True
+  show_time: True
+ 
+  # Event frames parameters
+  accumulation_time_us: 50000
+  delta_t: 1000
+  buffer_size: 10 
+
+  pixel_to_deg:
+    ref_pixel_to_deg: 0.0009601418439716312 #In degres from sun_calibration with FOV=reference_FOV
+    reference_FOV: 1 #In degrees. FOV o the sun calibration recording
+    recording_FOV: 14.3 #In degrees. FOV of the stars recording

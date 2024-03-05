@@ -1,10 +1,12 @@
 
+from chardet import detect
 from metavision_core.event_io import EventsIterator
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import cv2
 import minisom
+import time
 
 from utils import *
 from lib.utils import *
@@ -26,7 +28,7 @@ class ClusterVideo:
             return True
     
 class ClusterFrame: 
-    def __init__(self, frame, index_clustering = True, mass_treshold = None, treshold_filter = 0.2, pixel_range = 15):
+    def __init__(self, frame, pixel_to_deg, index_clustering = True, mass_treshold = None, treshold_filter = 0.2, pixel_range = 15 ):
         self.frame = frame
 
         # Parameters & options for filtering
@@ -36,12 +38,21 @@ class ClusterFrame:
         self.mass_treshold = mass_treshold # Optional: Treshold for the mass of the clusters (if not None)
 
         # Parameters for pixel to degree conversion
-        self.ref_pixel_to_deg = 0.0009601418439716312 #In degres from sun_calibration with FOV=reference_FOV
-        self.reference_FOV = 1 #In degrees
-        self.recording_FOV = 14.3 #In degrees
+        self.ref_pixel_to_deg = pixel_to_deg['ref_pixel_to_deg'] #In degres from sun_calibration with FOV=reference_FOV
+        self.reference_FOV = pixel_to_deg['reference_FOV']  #In degrees
+        self.recording_FOV = pixel_to_deg['recording_FOV'] #In degrees
         self.num_of_neirbours = 4
 
-        self.clusters_list = []
+        self.clusters_list_full = [] # List of clusters: [ [x_pixel, y_pixel], cluster comulative mass]
+        self.clusters_list = []  # List of clusters: [ [x_pixel, y_pixel] ]
+
+        self.time_dict ={ 
+            'compute_clusters': 0,
+            'compute_ids_predictions': 0,
+            'verify_predictions': 0, 
+            'compute_frame_position': 0
+            }
+
 
     def compute_clusters(self):
 
@@ -57,18 +68,23 @@ class ClusterFrame:
         clusters_index = sorted(clusters_index, key=lambda x: x[1], reverse=True)
 
         if self.index_clustering:
-            self.clusters_list = index_cluster(frame, self.pixel_range, clusters_index)
+            self.clusters_list_full = index_cluster(frame, self.pixel_range, clusters_index)
 
         if self.mass_treshold is not None:
-            treshold_val = self.mass_treshold*np.max([cluster_mass[1] for cluster_mass in  self.clusters_list])
-            self.clusters_list = [cluster for cluster in self.clusters_list if cluster[1] > treshold_val ]
+            treshold_val = self.mass_treshold*np.max([cluster_mass[1] for cluster_mass in  self.clusters_list_full])
+            self.clusters_list_full = [cluster for cluster in self.clusters_list_full if cluster[1] > treshold_val ]
 
-        self.clusters_list, _= order_by_center_dist(self.clusters_list, self.frame.shape)
+        self.clusters_list_full, _= order_by_center_dist(self.clusters_list_full, self.frame.shape)
+        self.clusters_list = [x[0] for x in self.clusters_list_full]
 
     
     def update_clusters(self, frame):
+        time_start = time.time()
+
         self.frame = frame
         self.compute_clusters()
+
+        self.time_dict['compute_clusters'] = time.time() - time_start
 
     def plot_cluster(self, size = [10, 7]):
         '''
@@ -168,7 +184,7 @@ class ClusterFrame:
         # Show the plot
         plt.show()
 
-    def plot_cluster_cv(self, size = None, show_con_ids = False):
+    def plot_cluster_cv(self, size = None, show_confirmed_ids = False):
         '''
         Plot the clusters on the image. 
 
@@ -182,7 +198,7 @@ class ClusterFrame:
         img_rgb = cv2.cvtColor(self.frame, cv2.COLOR_GRAY2RGB)
 
         cluster_size = self.pixel_range
-        clusters =  [x[0] for x in self.clusters_list]
+        clusters =  self.clusters_list
 
         # # If cluster is only cluster position [x_pixel, y_pixel]
 
@@ -196,11 +212,17 @@ class ClusterFrame:
 
                 # Plot the cluster number as text in the top left corner of the cluster
 
-                if show_con_ids and self.confirmed_stars_ids is not None:
+                if show_confirmed_ids and self.confirmed_stars_ids is not None:
                     confirmed_stars_hip = [int(self.stars_data[x][0]) if x is not None else None for x in self.confirmed_stars_ids]
                     for i, cluster in enumerate(clusters):
-                        cv2.putText(img_rgb, str(confirmed_stars_hip[i]), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+
+                        if confirmed_stars_hip[i] is not None:
+                            cv2.putText(img_rgb, str(confirmed_stars_hip[i]), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                            # Update the square and the cross to green if the star is confirmed
+                            cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
+                                (cluster[1] + cluster_size, cluster[0] + cluster_size), (0, 255, 0), 1)
+                            cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=5)
                 else:
                     for i, cluster in enumerate(clusters):
                         cv2.putText(img_rgb, str(i+1), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
@@ -254,13 +276,15 @@ class ClusterFrame:
 
 
     def compute_ids_predictions(self):
+        time_start = time.time()
+
         self.indices_image = []
         self.predcited_stars = []
 
-        for main_star in [x[0] for x in self.clusters_list]:
+        for main_star in self.clusters_list:
 
             #Order by distance to the main star at the loop
-            self.stars_sorted_by_main, index_sort = order_by_main_dist(main_star, [x[0] for x in self.clusters_list], True)
+            self.stars_sorted_by_main, index_sort = order_by_main_dist(main_star, self.clusters_list, True)
             self.indices_image.append(index_sort[0:self.num_of_neirbours+1])
             
             stars_features_1, stars_features_2 = get_star_features(self.stars_sorted_by_main[0:self.num_of_neirbours+1],
@@ -285,7 +309,10 @@ class ClusterFrame:
                 star_guess_id = None
             self.predcited_stars.append([star_guess_index, star_guess_id])
 
+        self.time_dict['compute_ids_predictions'] = time.time() - time_start
+
     def verify_predictions(self):
+        time_start = time.time()
 
         indices_neigh_gt  = np.full((len(self.predcited_stars),self.num_of_neirbours+1 ), None)
         for i, predicted_star in enumerate(self.predcited_stars):
@@ -301,10 +328,43 @@ class ClusterFrame:
 
         self.confirmed_indices = [i for i in range(len(self.confirmed_stars_ids)) if self.confirmed_stars_ids[i] is not None]
 
+        self.time_dict['verify_predictions'] = time.time() - time_start
+
     def compute_frame_position(self):
+        time_start = time.time()
+
         img_center = np.array(self.frame.shape)/2
         distances = []
         for confirmed_index in self.confirmed_indices:
             dist_to_center = np.linalg.norm(img_center - self.clusters_list[confirmed_index]) * self.ref_pixel_to_deg * self.recording_FOV / self.reference_FOV
             distances.append(dist_to_center)
+
         self.frame_position = solve_point_c(self.stars_data[self.confirmed_stars_ids[self.confirmed_indices].tolist()][:,1:3], distances)
+
+        self.time_dict['compute_frame_position'] = time.time() - time_start
+
+    def info(self, show_time = False): 
+        
+        discarted_stars = 0
+        predicted_ids = [x[0] for x in self.predcited_stars]
+        for star in predicted_ids:
+            if star is not None:
+                if star not in self.confirmed_stars_ids:     
+                    discarted_stars += 1
+
+        n_predicted = len(predicted_ids) - predicted_ids.count(None)
+        n_confirmed = len(self.confirmed_indices) 
+
+        print('Stars detected: ', len(self.predcited_stars), 'Stars identified: ', )
+        print('Stars identification loop: ')
+        print(f'     Stars identified: {n_predicted}')
+        print(f'     Stars verified  : {n_confirmed},( {discarted_stars} discarted, {n_predicted - discarted_stars} verified, {n_confirmed - (n_predicted - discarted_stars)} extended )')
+        print('Frame position: ', self.frame_position)
+
+        if show_time:
+            print('Time: (total, average) ')
+            print(f'     compute_clusters       : {self.time_dict["compute_clusters"]}, {self.time_dict["compute_clusters"]/len(self.predcited_stars)}')
+            print(f'     compute_ids_predictions: {self.time_dict["compute_ids_predictions"]}, {self.time_dict["compute_ids_predictions"]/len(self.predcited_stars)}')
+            print(f'     verify_predictions     : {self.time_dict["verify_predictions"]}, {self.time_dict["verify_predictions"]/len(self.predcited_stars)}')
+            print(f'     compute_frame_position : {self.time_dict["compute_frame_position"]}, {self.time_dict["compute_frame_position"]/len(self.confirmed_indices)}')
+
