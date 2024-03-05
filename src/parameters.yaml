@@ -16,7 +16,7 @@ parameters:
   # Verbose and visualiation 
   verbose: True
   show_video: True
-  show_time: True
+  show_time: False
  
   # Event frames parameters
   accumulation_time_us: 50000

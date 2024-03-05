@@ -135,6 +135,8 @@ def main():
 
             cluster_frame.compute_frame_position()
 
+            print(cluster_frame.time_dict)
+            cluster_frame.update_total_time()
 
             if args.verbose: 
                 cluster_frame.info(show_time = args.show_time)
@@ -143,9 +145,12 @@ def main():
                 if close_callbcak:
                     cv2.destroyAllWindows()
                     break
+
+            cluster_frame.time_dict 
                     
             frames.clear()
 
+    cluster_frame.print_total_time()
 
 if __name__ == "__main__":
     main()
