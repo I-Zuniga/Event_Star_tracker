@@ -3,8 +3,7 @@ parameters:
 
   # Paths
   input_path: "../data/recordings/02_02/recording_2024-02-02_17-21-24_FOV14.3_MAG6.raw"
-  train_path: "../data/recordings/02_02/recording_2024-02-02_17-21-24_FOV14.3_MAG6_train.raw"
-  catalog_folder: 'n67_90_tycho6'
+  train_folder: 'n80_tycho6'
   star_catalog_path: '../data/catalogs/tycho2_VT_6.csv'
   
   # Star detection filtering parameters
@@ -12,6 +11,7 @@ parameters:
   treshold_filter: 0.3
   mass_treshold: 0.2
   pixel_range: 15
+  max_n_clusters: 20
 
   # Verbose and visualiation 
   verbose: True

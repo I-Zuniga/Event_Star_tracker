@@ -41,9 +41,7 @@ def parse_args():
         '-i', '--input-raw-file', dest='input_path', default="",
         help="Path to input RAW file. If not specified, the live stream of the first available camera is used. "
         "If it's a camera serial number, it will try to open that camera instead.")
-    parser.add_argument('--train-path', dest='train_path', default="",
-                        help='Path to SOM training data. Need to be specified')
-    parser.add_argument('--catalog-folder', type=str, default="catalogs", help='catalog folder')
+    parser.add_argument('--train-folder', type=str, default="catalogs", help='catalog folder')
     parser.add_argument('--star-catalog-path', type=str, default="catalogs/Star_Catalog.csv", help='star catalog path')
 
 
@@ -51,6 +49,7 @@ def parse_args():
     parser.add_argument('--treshold-filter', type=float, default=0.0, help='treshold-filter value')
     parser.add_argument('--pixel-range', type=int, default=15, help='batch size')
     parser.add_argument('--mass-treshold', type=int, default=0.0, help='mass treshold')
+    parser.add_argument('--max-n-clusters', type=int, default=30, help='max number of clusters')
     
     # Event frames parameters
     parser.add_argument('--accumulation-time-us', type=int, default=50000, help='accumulation time in us')
@@ -101,8 +100,15 @@ def main():
 
     # Init Cluster Frame and Video
     innit_fame = np.zeros((height, width), dtype=np.uint8)
-    cluster_frame = ClusterFrame(innit_fame, pixel_to_deg = args.pixel_to_deg, pixel_range=args.pixel_range, treshold_filter=args.treshold_filter, mass_treshold=args.mass_treshold)
-    cluster_frame.load_som_parameters(args.catalog_folder)
+    cluster_frame = ClusterFrame(
+        innit_fame,
+        pixel_to_deg = args.pixel_to_deg,
+        pixel_range=args.pixel_range, 
+        treshold_filter=args.treshold_filter, 
+        mass_treshold=args.mass_treshold, 
+        max_number_of_clusters=args.max_n_clusters)
+    
+    cluster_frame.load_som_parameters(args.train_folder)
     cluster_frame.load_star_catalog(args.star_catalog_path)
     cluster_video = ClusterVideo()
     frames = []  # TODO: Change to np.array?

@@ -28,7 +28,7 @@ class ClusterVideo:
             return True
     
 class ClusterFrame: 
-    def __init__(self, frame, pixel_to_deg, index_clustering = True, mass_treshold = None, treshold_filter = 0.2, pixel_range = 15 ):
+    def __init__(self, frame, pixel_to_deg, index_clustering = True, mass_treshold = None, treshold_filter = 0.2, pixel_range = 15, max_number_of_clusters = 30):
         self.frame = frame
 
         # Parameters & options for filtering
@@ -36,6 +36,7 @@ class ClusterFrame:
         self.pixel_range = pixel_range # Pixel range of the cluster
         self.index_clustering = index_clustering # If true, second iteration of clustering (reduce duplicates but slower)
         self.mass_treshold = mass_treshold # Optional: Treshold for the mass of the clusters (if not None)
+        self.max_number_of_clusters = max_number_of_clusters
 
         # Parameters for pixel to degree conversion
         self.ref_pixel_to_deg = pixel_to_deg['ref_pixel_to_deg'] #In degres from sun_calibration with FOV=reference_FOV
@@ -71,7 +72,7 @@ class ClusterFrame:
         max_val = np.max(frame)
         frame_thr = cv2.threshold(frame, max_val*self.treshold, 1, cv2.THRESH_TOZERO)[1]
         
-        clusters =  max_value_cluster(frame_thr, self.pixel_range, 30)
+        clusters =  max_value_cluster(frame_thr, self.pixel_range, self.max_number_of_clusters)
         clusters = sorted(clusters, key=lambda x: x[1], reverse=True)
         clusters_index = np.array([cluster[0] for cluster in clusters])
         clusters_index = sorted(clusters_index, key=lambda x: x[1], reverse=True)
@@ -377,33 +378,49 @@ class ClusterFrame:
 
         if show_time:
             print('Time: (total, average) ')
-            print(f'     compute_clusters       : {self.time_dict["compute_clusters"]}, {self.time_dict["compute_clusters"]/len(self.predcited_stars)}')
-            print(f'     compute_ids_predictions: {self.time_dict["compute_ids_predictions"]}, {self.time_dict["compute_ids_predictions"]/len(self.predcited_stars)}')
-            print(f'     verify_predictions     : {self.time_dict["verify_predictions"]}, {self.time_dict["verify_predictions"]/len(self.predcited_stars)}')
-            print(f'     compute_frame_position : {self.time_dict["compute_frame_position"]}, {self.time_dict["compute_frame_position"]/len(self.confirmed_indices)}')
+            if len(self.predcited_stars) != 0:
+                print(f'     compute_clusters       : {self.time_dict["compute_clusters"]}, {self.time_dict["compute_clusters"]/len(self.predcited_stars)}')
+                print(f'     compute_ids_predictions: {self.time_dict["compute_ids_predictions"]}, {self.time_dict["compute_ids_predictions"]/len(self.predcited_stars)}')
+                print(f'     verify_predictions     : {self.time_dict["verify_predictions"]}, {self.time_dict["verify_predictions"]/len(self.predcited_stars)}')
+            else: 
+                print(f'     compute_clusters       : Error, No predicted stars')
+                print(f'     compute_ids_predictions: Error, No predicted stars')
+                print(f'     verify_predictions     : Error, No predicted stars')
+            
+            if len(self.confirmed_indices) != 0:
+                print(f'     compute_frame_position : {self.time_dict["compute_frame_position"]}, {self.time_dict["compute_frame_position"]/len(self.confirmed_indices)}')
+            else: 
+                print(f'     compute_frame_position : Error, No confirmed indices')
 
     def update_total_time(self):
-        self.total_time_dict['compute_clusters'][0] += self.time_dict['compute_clusters']
-        self.total_time_dict['compute_clusters'][1] += self.time_dict['compute_clusters']/len(self.predcited_stars)
-        self.total_time_dict['compute_ids_predictions'][0] += self.time_dict['compute_ids_predictions']
-        self.total_time_dict['compute_ids_predictions'][1] += self.time_dict['compute_ids_predictions']/len(self.predcited_stars)
-        self.total_time_dict['verify_predictions'][0] += self.time_dict['verify_predictions']
-        self.total_time_dict['verify_predictions'][1] += self.time_dict['verify_predictions']/len(self.predcited_stars)
-        self.total_time_dict['compute_frame_position'][0] += self.time_dict['compute_frame_position']
-        self.total_time_dict['compute_frame_position'][1] += self.time_dict['compute_frame_position']/len(self.confirmed_indices)
+        if len(self.confirmed_indices) != 0 :
+            self.total_time_dict['compute_clusters'][0] += self.time_dict['compute_clusters']
+            self.total_time_dict['compute_clusters'][1] += self.time_dict['compute_clusters']/len(self.predcited_stars)
+            self.total_time_dict['compute_ids_predictions'][0] += self.time_dict['compute_ids_predictions']
+            self.total_time_dict['compute_ids_predictions'][1] += self.time_dict['compute_ids_predictions']/len(self.predcited_stars)
+            self.total_time_dict['verify_predictions'][0] += self.time_dict['verify_predictions']
+            self.total_time_dict['verify_predictions'][1] += self.time_dict['verify_predictions']/len(self.predcited_stars)
+            self.total_time_dict['compute_frame_position'][0] += self.time_dict['compute_frame_position']
+            self.total_time_dict['compute_frame_position'][1] += self.time_dict['compute_frame_position']/len(self.confirmed_indices)
+        else:
+            print('Error: No confirmed indices')
+            self.update_count -= 1
 
     def print_total_time(self):
-        print(f'Total Time for {self.update_count} frames: (total, average per star) ')
-        print(f'     compute_clusters       : {self.total_time_dict["compute_clusters"][0]}, {self.total_time_dict["compute_clusters"][1]}')
-        print(f'     compute_ids_predictions: {self.total_time_dict["compute_ids_predictions"][0]}, {self.total_time_dict["compute_ids_predictions"][1]}')
-        print(f'     verify_predictions     : {self.total_time_dict["verify_predictions"][0]}, {self.total_time_dict["verify_predictions"][1]}')
-        print(f'     compute_frame_position : {self.total_time_dict["compute_frame_position"][0]}, {self.total_time_dict["compute_frame_position"][1]}')
 
-        print(f'Average Time per frame for {self.update_count} frames: (total, average per star) ')
-        print(f'     compute_clusters       : {self.total_time_dict["compute_clusters"][0]/self.update_count}, {self.total_time_dict["compute_clusters"][1]/self.update_count}')
-        print(f'     compute_ids_predictions: {self.total_time_dict["compute_ids_predictions"][0]/self.update_count}, {self.total_time_dict["compute_ids_predictions"][1]/self.update_count}')
-        print(f'     verify_predictions     : {self.total_time_dict["verify_predictions"][0]/self.update_count}, {self.total_time_dict["verify_predictions"][1]/self.update_count}')
-        print(f'     compute_frame_position : {self.total_time_dict["compute_frame_position"][0]/self.update_count}, {self.total_time_dict["compute_frame_position"][1]/self.update_count}')
+        if self.update_count != 0: 
+            print(f'Total Time for {self.update_count} frames: (total, average per star) ')
+            print(f'     compute_clusters       : {self.total_time_dict["compute_clusters"][0]}, {self.total_time_dict["compute_clusters"][1]}')
+            print(f'     compute_ids_predictions: {self.total_time_dict["compute_ids_predictions"][0]}, {self.total_time_dict["compute_ids_predictions"][1]}')
+            print(f'     verify_predictions     : {self.total_time_dict["verify_predictions"][0]}, {self.total_time_dict["verify_predictions"][1]}')
+            print(f'     compute_frame_position : {self.total_time_dict["compute_frame_position"][0]}, {self.total_time_dict["compute_frame_position"][1]}')
 
+            print(f'Average Time per frame for {self.update_count} frames: (total, average per star) ')
+            print(f'     compute_clusters       : {self.total_time_dict["compute_clusters"][0]/self.update_count}, {self.total_time_dict["compute_clusters"][1]/self.update_count}')
+            print(f'     compute_ids_predictions: {self.total_time_dict["compute_ids_predictions"][0]/self.update_count}, {self.total_time_dict["compute_ids_predictions"][1]/self.update_count}')
+            print(f'     verify_predictions     : {self.total_time_dict["verify_predictions"][0]/self.update_count}, {self.total_time_dict["verify_predictions"][1]/self.update_count}')
+            print(f'     compute_frame_position : {self.total_time_dict["compute_frame_position"][0]/self.update_count}, {self.total_time_dict["compute_frame_position"][1]/self.update_count}')
+        else: 
+            print(f'No predicted stars, adjust parameters')
 
 
