@@ -357,14 +357,77 @@ def get_star_features(star_list, ref_pixel_to_deg = 1, reference_FOV = 1, record
             star_features_2.append( np.linalg.norm(star_list[k] - star_list[j]) )
             # star_features_1.append( np.log(star_features_2[-1]) )
 
-    pixel_to_deg = ref_pixel_to_deg * recording_FOV/reference_FOV
-    # Pixels to deegres 
-    # star_features_1[::2] += np.log(pixel_to_deg)  # Only the r component is scaled (in log) as theta is in radians
+
     star_features_1 = np.array(star_features_1) 
     star_features_2 = np.array(star_features_2)
 
     return star_features_1, star_features_2
 
+def get_star_features_2(star_list,feature_type, ref_pixel_to_deg = 1, reference_FOV = 1, recording_FOV = 1):
+    '''
+    Compute the star features for the first star of the list. The star list shoud be ordered by the
+    distance to the first star.
+
+    PARAMETERS
+    ----------
+    star_list : list
+        List of stars. Each star is a list with the following structure:
+            [main_star[x_pixel, y_pixel], first_neirbour_star[x_pixel, y_pixel], second_neirbour_star[x_pixel, y_pixel], ...]
+    feature_type : str
+        Type of feature to be computed. Options: 'log_polar', 'permutation'
+
+    '''  
+    star_features_1 = []
+    pixel_to_deg = ref_pixel_to_deg * recording_FOV/reference_FOV
+    star_list = np.array(star_list) * pixel_to_deg
+
+#  Center the star list in the mean position (avoid traslation problems)
+    star_list = star_list - star_list[0]
+
+
+    if feature_type == 'log_polar':
+
+        for j in range(len(star_list)):
+            if j == 1:
+                star_features_1.extend(log_polar_transform(star_list[0],star_list[j], star_list[1])) 
+                star_features_1.pop()# Avoid angle =0 
+                
+            if j > 1:
+                # Log polar transform
+                star_features_1.extend(log_polar_transform(star_list[0],star_list[j], star_list[1]))
+
+        # Compute distance between each neirbour star (permutation)
+    elif feature_type == 'permutation':
+    
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( np.linalg.norm(star_list[k] - star_list[j]) )
+
+    elif feature_type == 'permuatation_suffled':
+    
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( np.linalg.norm(star_list[k] - star_list[j]) )
+            # flip the list
+            star_features_1 = star_features_1[::-1]
+
+    elif feature_type == 'permutation_log':
+    
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( np.log(np.linalg.norm(star_list[k] - star_list[j]) ))
+
+    elif feature_type == 'permutation_log_polar':
+    
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.extend(log_polar_transform(star_list[j],star_list[k], star_list[1])) 
+        star_features_1.pop(1)
+
+
+    star_features_1 = np.array(star_features_1) 
+
+    return star_features_1
 
 def get_second(som, x):
     """Computes the coordinates of the winning neuron for the sample x."""

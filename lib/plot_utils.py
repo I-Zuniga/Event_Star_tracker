@@ -57,15 +57,13 @@ def plot_cluster(img, clusters, cluster_size, size = [10, 7]):
                 for i, cluster in enumerate(clusters):
                         ax.text(cluster[2][1] - cluster_size, cluster[2][0] - cluster_size -5, i+1, color='r')
 
-        # Plot a red green on the center of mass of the clusters
-        for cluster in clusters:
+        # Plot a red cross on the center of mass of the clusters
                 ax.plot([cluster[0][1] - 2, cluster[0][1] + 2],
                         [cluster[0][0] - 2, cluster[0][0] + 2], 'g')
                 ax.plot([cluster[0][1] - 2, cluster[0][1] + 2],
                         [cluster[0][0] + 2, cluster[0][0] - 2], 'g')
 
         # Plot a red cross on the initial position of the clusters
-        for cluster in clusters:
                 ax.plot([cluster[2][1] - 2, cluster[2][1] + 2],
                         [cluster[2][0] - 2, cluster[2][0] + 2], 'r')
                 ax.plot([cluster[2][1] - 2, cluster[2][1] + 2],
