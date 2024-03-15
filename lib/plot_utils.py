@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 import cv2
 
+from mpl_toolkits.mplot3d import Axes3D
 
 def plot_image(img):
     # Create figure and axes 
@@ -198,3 +199,32 @@ def cv_plot(img):
     cv2.imshow('image',img)  
     cv2.waitKey() # This is necessary to be required so that the image doesn't close immediately.   
     cv2.destroyAllWindows()
+
+
+
+def plot_sphere_with_trajectory(radius=1, center=(0, 0, 0), num_samples=100, trajectory=None):
+    # Generate theta and phi values
+    theta = np.linspace(0, 2 * np.pi, num_samples)
+    phi = np.linspace(0, np.pi, num_samples)
+
+    # Generate coordinates for the sphere surface
+    x = radius * np.outer(np.cos(theta), np.sin(phi)) + center[0]
+    y = radius * np.outer(np.sin(theta), np.sin(phi)) + center[1]
+    z = radius * np.outer(np.ones(np.size(theta)), np.cos(phi)) + center[2]
+
+    # Plot the sphere surface
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot_surface(x, y, z, color='b', alpha=0.6)
+
+    # Set aspect ratio to be equal
+    ax.set_box_aspect([1, 1, 1])
+
+    # Plot the trajectory if provided
+    if trajectory is not None:
+        latitudes, longitudes = trajectory
+        # Convert latitude and longitude to radians
+        latitudes_rad = np.radians(latitudes)
+        longitudes_rad = np.radians(longitudes)
+        
+        # Convert latitude a
