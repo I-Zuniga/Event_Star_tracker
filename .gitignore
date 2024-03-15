@@ -3,5 +3,5 @@
 
 *.raw.tmp_index
 
-# csv in the data/results folder is ignored
-data/results/*.csv
+# csv in the data/results/{folder_name}/ folder is ignored
+data/results/*/*.csv
