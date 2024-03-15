@@ -43,6 +43,8 @@ def parse_args():
         "If it's a camera serial number, it will try to open that camera instead.")
     parser.add_argument('--train-folder', type=str, default="catalogs", help='catalog folder')
     parser.add_argument('--star-catalog-path', type=str, default="catalogs/Star_Catalog.csv", help='star catalog path')
+    parser.add_argument('-l', '--load-params', dest='params_path', default="", 
+        help="Path to the config.yaml file with the configuration parameters.")
 
 
     # Star detection filtering parameters
@@ -55,9 +57,6 @@ def parse_args():
     parser.add_argument('--accumulation-time-us', type=int, default=50000, help='accumulation time in us')
     parser.add_argument('--delta-t', type=int, default=10000, help='delta t in us')
     parser.add_argument('--buffer-size', type=int, default=10, help='buffer size')
-
-    parser.add_argument('--load-params', dest='params_path', default="", 
-        help="Path to the config.yaml file with the configuration parameters.")
     
     # Pixel to deg parameters 
     parser.add_argument('--pixel-to-deg', type=dict, help='pixel to degree parameters dictionary')
@@ -69,6 +68,12 @@ def parse_args():
                         help='if enabled, video will be shown')
     parser.add_argument('--show-time', action='store_true',
                         help='if enabled, time will be shown')
+    
+    # Data saving
+    parser.add_argument('--save-stars', action='store_true',
+                        help='if enabled, stars will be saved')
+    parser.add_argument('--save-attitude', action='store_true',
+                        help='if enabled, attitude (RA, DE) of the image will be saved')
     
     args = parser.parse_args()
 
@@ -151,6 +156,17 @@ def main():
                 if close_callbcak:
                     cv2.destroyAllWindows()
                     break
+
+            if args.save_stars:
+                cluster_frame.save_stars(
+                    training_name = args.train_folder, 
+                    recording_path=args.input_path, 
+                    time = time.time() - start_time)
+            if args.save_attitude:
+                cluster_frame.save_attitude(
+                    training_name = args.train_folder, 
+                    recording_path=args.input_path, 
+                    time = time.time() - start_time)
 
             cluster_frame.time_dict 
                     

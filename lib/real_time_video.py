@@ -7,6 +7,7 @@ import pickle
 import cv2
 import minisom
 import time
+import os
 
 from utils import *
 from lib.utils import *
@@ -252,7 +253,7 @@ class ClusterFrame:
 
         print(self.stars_data.shape,' Stars loaded')
 
-    def load_som_parameters(self, name = 'n67_90_tycho6'):
+    def load_som_parameters(self, name):
 
         #Load som from previusly trained model
         with open('../data/SOM_parameters/'+name+'/som1_'+ name + '.p', 'rb') as infile:
@@ -423,4 +424,43 @@ class ClusterFrame:
         else: 
             print(f'No predicted stars, adjust parameters')
 
+    def save_attitude(self, training_name, recording_path, time = None):
+        ''' Save the frame center position(attitude) as a new line in a csv file'''
 
+        filename = os.path.splitext(os.path.basename(recording_path))[0] 
+        path = '../data/results/'+ training_name +'/'+filename+'-attitude.csv'
+
+        if not os.path.exists(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w'):
+                pass
+            # write the header
+            with open(path, 'a') as f:
+                f.write('# Latitude,Longitude, time \n')
+
+        if self.frame_position is not None:
+            with open(path, 'a') as f:
+                f.write(f'{self.frame_position[0]},{self.frame_position[1]},{time}\n')
+        else:
+            print('Error: No position to save')
+
+
+    def save_stars(self, training_name, recording_path, time = None):
+        ''' Save the stars detected and confirmed in a csv file''' 
+
+        filename = os.path.splitext(os.path.basename(recording_path))[0] 
+        path = '../data/results/'+ training_name +'/'+filename+'-stars.csv'
+
+        if not os.path.exists(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w'):
+                pass
+
+        if self.confirmed_stars_ids is not None:
+            with open(path, 'a') as f:
+                f.write(f'{time},')
+                for star in self.confirmed_stars_ids:
+                    f.write(f'{star},')
+                f.write('\n')
+        else:
+            print('Error: No stars to save')

@@ -11,7 +11,7 @@ parameters:
   treshold_filter: 0.3
   mass_treshold: 0.2
   pixel_range: 15
-  max_n_clusters: 20
+  max_n_clusters: 30
 
   # Verbose and visualiation 
   verbose: True
@@ -27,3 +27,7 @@ parameters:
     ref_pixel_to_deg: 0.0009601418439716312 #In degres from sun_calibration with FOV=reference_FOV
     reference_FOV: 1 #In degrees. FOV o the sun calibration recording
     recording_FOV: 14.3 #In degrees. FOV of the stars recording
+
+# Data saving 
+  save_stars: False
+  save_attitude: True 
