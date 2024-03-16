@@ -310,11 +310,31 @@ class ClusterFrame:
             hip_ids_predicted_1 = [self.stars_data[x][0].astype(int) for x in predicted_star_ids_1]
             hip_ids_predicted_2 = [self.stars_data[x][0].astype(int) for x in predicted_star_ids_2]
 
+
+            if predicted_star_ids_1[0] == 0: # If no match of SOM1 (id returned is 0) use directly the SOM2 result
+                star_guess = predicted_star_ids_2
+            elif predicted_star_ids_2[0] == 0: # If no match of SOM2 (id returned is 0) use directly the SOM1 result
+                star_guess = predicted_star_ids_1
+            else:
+                star_guess = list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))
+
+            if len(star_guess) == 0: # Second guees 
+                if len(predicted_star_ids_1) == 1 and len(predicted_star_ids_2) != 1:
+                    star_guess = (predicted_star_ids_1)
+                elif len(predicted_star_ids_2) == 1 and len(predicted_star_ids_1) != 1:
+                    star_guess = (predicted_star_ids_2)
+                elif len(predicted_star_ids_2) == 1 and len(predicted_star_ids_1) == 1:
+                    act_som1 = self.som1.activate( (stars_features_1 - self.norm_param[0])/(self.norm_param[1]-self.norm_param[0]) )
+                    act_som2 = self.som2.activate( (stars_features_2 - self.norm_param[2])/(self.norm_param[3]-self.norm_param[2]) )
+                    if act_som1.min() < act_som2.min():
+                        star_guess = predicted_star_ids_1
+                    else:
+                        star_guess = predicted_star_ids_2
+
             # Get the intersection of the two predictions if there is only one star in common
-            if len(list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))) < 2 and len(
-                list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))) > 0:
-                star_guess_index = list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))[0]
-                star_guess_id = list(set(hip_ids_predicted_1).intersection(hip_ids_predicted_2))[0]
+            if len(star_guess) == 1:
+                star_guess_index = star_guess[0]
+                star_guess_id = self.stars_data[star_guess_index].astype(int)[0]
 
             else:
                 star_guess_index = None
