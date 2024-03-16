@@ -130,6 +130,12 @@ def main():
 
         event_frame_gen.process_events(evs)
         # TODO: Cambiar buffer a tiempo.
+        # Options:
+        # best effort 
+        # garantize data each second 
+        # resaerch benchamarck in LIS and recursive
+
+        # PowerCOnsumption 
 
         if len(frames) == args.buffer_size:
 
