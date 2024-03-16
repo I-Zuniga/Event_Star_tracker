@@ -424,6 +424,19 @@ def get_star_features_2(star_list,feature_type, ref_pixel_to_deg = 1, reference_
                 star_features_1.extend(log_polar_transform(star_list[j],star_list[k], star_list[1])) 
         star_features_1.pop(1)
 
+    elif feature_type == 'permutation_angle':
+
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( get_angle(star_list[j],star_list[k]))
+
+    elif feature_type == 'permutation_multi':
+
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( np.linalg.norm(star_list[k] - star_list[j]) * get_angle(star_list[j],star_list[k]))
+
+
 
     star_features_1 = np.array(star_features_1) 
 
@@ -540,6 +553,25 @@ def log_polar_transform(main_point, secondary_point, axis_ref):
     # theta = ( np.arctan2(y, x) - np.arctan2(y0, x0) + 2 * np.pi) % (2 * np.pi)
 
     return r, theta
+
+def get_angle( secondary_point, axis_ref):
+    ''' 
+    Get the angle between two points with respect to the center
+
+    Parameters:
+    secondary_point : array
+        Secondary star point
+    axis_ref : array
+        Axis reference point (usually closer to main star)
+
+    Returns:
+    theta : float
+        Angle between the main point and the secondary point with respect to the axis reference
+        
+    '''
+    theta = ( np.arctan2(secondary_point[1],secondary_point[0]) - np.arctan2(axis_ref[1],axis_ref[0]) + 2 * np.pi) % (2 * np.pi)
+
+    return theta
 
 def distance(x_c, y_c, points):
     '''Calculate the distance of the points to the center of the image'''
