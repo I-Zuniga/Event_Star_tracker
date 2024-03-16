@@ -32,7 +32,8 @@ import time
     
 # Normalize the data -> better performace of the SOM 
 def normalize_features(star_features):
-    star_features_normalized = (star_features - star_features.min()) / (star_features.max() - star_features.min())
+    # star_features_normalized = (star_features - star_features.min()) / (star_features.max() - star_features.min())
+    star_features_normalized = (star_features - star_features.min(axis=0)) / (star_features.max(axis=0) - star_features.min(axis=0))
     return star_features_normalized
 
 # Another dict for map neurons to star (just to check), same as star_ids but created from som.winner rather than som.winner_map
@@ -74,14 +75,17 @@ def train(hyperparameters_1, hyperparameters_2, trial):
         features_1 = []
         features_2 = []
 
-        features_1, features_2 = get_star_features(stars_data[indices[i][0:n_of_neighbor+1]][:,1:3], 1, 1, 1)
+        feature_type_1 = 'permutation_multi'
+        feature_type_2 = 'permutation'
+        
+        features_1 = get_star_features_2(stars_data[indices[i][0:n_of_neighbor+1]][:,1:3], feature_type_1)
+        features_2 = get_star_features_2(stars_data[indices[i][0:n_of_neighbor+1]][:,1:3], feature_type_2)
+
         features_vec_1.append(features_1)
         features_vec_2.append(features_2)
 
 
     # ## SINGLE TRAINING ##
-
-
     features_vec_1 = np.array(features_vec_1)
     features_vec_2 = np.array(features_vec_2)
 
@@ -143,12 +147,14 @@ def train(hyperparameters_1, hyperparameters_2, trial):
 
 
     # Test the SOMs
-    cont = np.zeros(5) # [Correct match, miss match, multiple match, correct SOM1, correct SOM2]
+    cont = np.zeros(6) # [Correct match, miss match, multiple match, correct SOM1, correct SOM2]
     stars_pos = np.copy(stars_data[:,1:3])
     noise= np.random.normal(loc=1, scale=0.001, size=stars_pos.shape)
     mean_noise = np.mean(np.abs(1-noise), axis=0)
     mean_time = 0
     stars_pos *= noise
+    acc = np.zeros(2) # [correct SOM1, correct SOM2]
+
 
     for i in range(len(stars_pos)):
         
@@ -156,28 +162,52 @@ def train(hyperparameters_1, hyperparameters_2, trial):
 
         features_1 = []
         features_2 = []
-            
 
-        features_1, features_2 = get_star_features(stars_pos[indices[i][0:n_of_neighbor+1]], 1, 1, 1)
+        features_1 = get_star_features_2(stars_pos[indices[i][0:n_of_neighbor+1]], feature_type_1)
+        features_2 = get_star_features_2(stars_pos[indices[i][0:n_of_neighbor+1]], feature_type_2)
 
-        winner_ids_1 = predict_star_id(features_1, [features_vec_1.min(), features_vec_1.max()], star_dict_1, som1)
-        winner_ids_2 = predict_star_id(features_2, [features_vec_2.min(), features_vec_2.max()], star_dict_2, som2)
+        winner_ids_1 = predict_star_id(features_1, [features_vec_1.min(axis=0), features_vec_1.max(axis=0)], star_dict_1, som1)
+        winner_ids_2 = predict_star_id(features_2, [features_vec_2.min(axis=0), features_vec_2.max(axis=0)], star_dict_2, som2)
+
         if i in winner_ids_1 and len(winner_ids_1) < 20:
-            cont[3] += 1
+            acc[0] += 1
         if i in winner_ids_2 and len(winner_ids_2) < 20:
-            cont[4] += 1
+            acc[1] += 1
         
-        star_guess = list(set(winner_ids_1).intersection(winner_ids_2))
-        if len(list(set(winner_ids_1).intersection(winner_ids_2))) == 1:
+
+        if winner_ids_1[0] == 0: # If no match of SOM1 (id returned is 0) use directly the SOM2 result
+            star_guess = winner_ids_2
+        elif winner_ids_2[0] == 0: # If no match of SOM2 (id returned is 0) use directly the SOM1 result
+            star_guess = winner_ids_1
+        else:
+            star_guess = list(set(winner_ids_1).intersection(winner_ids_2))
+
+        if len(star_guess) == 0: # Second guees 
+            if len(winner_ids_1) == 1 and len(winner_ids_2) != 1:
+                star_guess = (winner_ids_1)
+            elif len(winner_ids_2) == 1 and len(winner_ids_1) != 1:
+                star_guess = (winner_ids_2)
+            elif len(winner_ids_2) == 1 and len(winner_ids_1) == 1:
+                act_som1 = som1.activate( (features_1 - features_vec_1.min(axis=0))/(features_vec_1.max(axis=0)-features_vec_1.min(axis=0)) )
+                act_som2 = som2.activate( (features_2 - features_vec_2.min(axis=0))/(features_vec_2.max(axis=0)-features_vec_2.min(axis=0)) )
+                if act_som1.min() < act_som2.min():
+                    star_guess = winner_ids_1
+                else:
+                    star_guess = winner_ids_2
+
+        # Accuracy count
+        if len(star_guess) == 1:
             cont[0] += star_guess[0] == i
             cont[1] += star_guess[0] != i
         else:
-            # print("Error: ", list(set(winner_ids_1).intersection(winner_ids_2)), "!=", i)
-            cont[1] += len(star_guess) == 0
+            if len(star_guess) == 0: # If no match
+                if i in winner_ids_1:
+                    cont[3] += 1
+                elif i in winner_ids_2:
+                    cont[4] += 1
+                else:  
+                    cont[5] += 1
             cont[2] += len(star_guess) > 1
-
-        mean_time += time.time() - time_start #Time cont end
-   
 
     # mean_noise = mean_noise / features_vec_1.shape[0] / 2
 
@@ -185,8 +215,8 @@ def train(hyperparameters_1, hyperparameters_2, trial):
     # opt_1 = len(som1.win_map(features_1_n)) / hyperparameters['mesh_size_1']**2
     # opt_2 = len(som2.win_map(features_2_n)) / hyperparameters['mesh_size_2']**2
     opt_3 = cont[0] / features_vec_1.shape[0]
-    opt_4 = cont[3] / features_vec_1.shape[0]
-    opt_5 = cont[4] / features_vec_1.shape[0]
+    opt_4 = acc[0] / features_vec_1.shape[0]
+    opt_5 = acc[1] / features_vec_1.shape[0]
 
     return opt_3, opt_4, opt_5
 

@@ -31,18 +31,18 @@ def objective(trial):
     # Number of layers and units per layer for actor
 
     # SOM 1 
-    mesh_size_1 = trial.suggest_int('mesh_size_1', 67,90)
+    mesh_size_1 = trial.suggest_int('mesh_size_1', 60,90)
     sigma_1 = trial.suggest_float('sigma_1', 1, 10)
     learning_rate_1 = trial.suggest_float('learning_rate_1', 0.2, 2)
-    # neighborhood_function_1 = trial.suggest_categorical('neighborhood_function_1', ['gaussian', 'triangle'])
+    neighborhood_function_1 = trial.suggest_categorical('neighborhood_function_1', ['gaussian', 'triangle'])
     topology_1 = trial.suggest_categorical('topology_1', ['hexagonal', 'rectangular'])
     activation_distance_1 = trial.suggest_categorical('activation_distance_1', ['euclidean', 'manhattan'])
 
 
-    mesh_size_2 = trial.suggest_int('mesh_size_2', 67,90)
+    mesh_size_2 = trial.suggest_int('mesh_size_2', 60,90)
     sigma_2 = trial.suggest_float('sigma_2', 1, 10)
     learning_rate_2 = trial.suggest_float('learning_rate_2', 0.2, 2)
-    # neighborhood_function_2 = trial.suggest_categorical('neighborhood_function_2', ['gaussian', 'triangle'])
+    neighborhood_function_2 = trial.suggest_categorical('neighborhood_function_2', ['gaussian', 'triangle'])
     topology_2 = trial.suggest_categorical('topology_2', ['hexagonal', 'rectangular'])
     activation_distance_2 = trial.suggest_categorical('activation_distance_2', ['euclidean', 'manhattan'])
 
@@ -52,22 +52,22 @@ def objective(trial):
         'mesh_size_1': mesh_size_1,
         'sigma': sigma_1,
         'learning_rate': learning_rate_1,
-        'neighborhood_function': 'gaussian',
+        'neighborhood_function': neighborhood_function_1,
         'topology': topology_1,
         'activation_distance': activation_distance_1,
         'n_of_neighbors' : 4,
-        'epochs' : 150000,
+        'epochs' : 100000,
     }
 
     hyperparameters_2 = {
         'mesh_size_2': mesh_size_2,
         'sigma': sigma_2,
         'learning_rate': learning_rate_2,
-        'neighborhood_function': 'gaussian',
+        'neighborhood_function': neighborhood_function_2,
         'topology': topology_2,
         'activation_distance': activation_distance_2,
         'n_of_neighbors' : 4,
-        'epochs' : 150000,
+        'epochs' : 100000,
     }
 
     accuracy = train(hyperparameters_1, hyperparameters_2, trial)
@@ -84,11 +84,11 @@ study = optuna.create_study(
     # direction='maximize', # single objective
     directions=['maximize', 'maximize','maximize'], # multi-objective
     storage="sqlite:///db.sqlite3",
-    study_name="big_soms_fixed_gaussian",
+    study_name="permutation angle and dist",
     load_if_exists=True,
     pruner=optuna.pruners.ThresholdPruner(lower=0.1),
     )
-study.optimize(objective, n_trials=150)  # You can adjust the number of trials
+study.optimize(objective, n_trials=200)  # You can adjust the number of trials
 
 
 pruned_trials = study.get_trials(states=(optuna.trial.TrialState.PRUNED,))
