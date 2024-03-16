@@ -55,7 +55,16 @@ def plot_sphere_with_trajectory(radius=1, center=(0, 0, 0), num_samples=100, tra
     ax.text(center[0] + radius*1.1, center[1], center[2], 'X', color = 'g')
     ax.text(center[0], center[1] + radius*1.1, center[2], 'Y', color = 'g')
     ax.text(center[0], center[1], center[2] + radius*1.1, 'Z', color = 'g')
-    
+
+    # Plot the axes of the last traejctory point
+    x_axis, y_axis, z_axis = rotate_axes(latitudes[-1], longitudes[-1])
+    ax.plot([center[0], center[0] + radius*1.1*x_axis[0]], [center[1], center[1] + radius*1.1*x_axis[1]], [center[2], center[2] + radius*1.1*x_axis[2]], color='r', linestyle='-', linewidth=1)
+    ax.plot([center[0], center[0] + radius*1.1*y_axis[0]], [center[1], center[1] + radius*1.1*y_axis[1]], [center[2], center[2] + radius*1.1*y_axis[2]], color='r', linestyle='-', linewidth=1)
+    ax.plot([center[0], center[0] + radius*1.1*z_axis[0]], [center[1], center[1] + radius*1.1*z_axis[1]], [center[2], center[2] + radius*1.1*z_axis[2]], color='r', linestyle='-', linewidth=1)
+    # plot the axis name in the end of the axis
+    ax.text(center[0] + radius*1.1*x_axis[0], center[1] + radius*1.1*x_axis[1], center[2] + radius*1.1*x_axis[2], 'X', color = 'r')
+    ax.text(center[0] + radius*1.1*y_axis[0], center[1] + radius*1.1*y_axis[1], center[2] + radius*1.1*y_axis[2], 'Y', color = 'r')
+    ax.text(center[0] + radius*1.1*z_axis[0], center[1] + radius*1.1*z_axis[1], center[2] + radius*1.1*z_axis[2], 'Z', color = 'r')
 
     # Plot the star catalog if provided
     if star_catalog is not None:
@@ -83,6 +92,34 @@ def plot_sphere_with_trajectory(radius=1, center=(0, 0, 0), num_samples=100, tra
 
     # Show plot
     plt.show()
+
+
+def rotate_axes(latitude, longitude):
+    # Convert latitude and longitude angles to radians
+    lat_rad = np.radians(-latitude)
+    long_rad = np.radians(longitude)
+    
+    # Rotation matrix for longitude (z-axis)
+    R_long = np.array([[np.cos(long_rad), -np.sin(long_rad), 0],
+                       [np.sin(long_rad), np.cos(long_rad), 0],
+                       [0, 0, 1]])
+    
+    # Rotation matrix for latitude (y-axis)
+    R_lat = np.array([[np.cos(lat_rad), 0, np.sin(lat_rad)],
+                      [0, 1, 0],
+                      [-np.sin(lat_rad), 0, np.cos(lat_rad)]])
+    
+    # Initial axes
+    x_axis = np.array([1, 0, 0])
+    y_axis = np.array([0, 1, 0])
+    z_axis = np.array([0, 0, 1])
+    
+    # Apply rotation
+    rotated_x_axis = np.dot(R_lat, np.dot(R_long, x_axis))
+    rotated_y_axis = np.dot(R_lat, np.dot(R_long, y_axis))
+    rotated_z_axis = np.dot(R_lat, np.dot(R_long, z_axis))
+    
+    return rotated_x_axis, rotated_y_axis, rotated_z_axis
 
 # Example usage:
 # Generate some random latitude and longitude coordinates for the trajectory
