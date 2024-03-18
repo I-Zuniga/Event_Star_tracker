@@ -212,33 +212,45 @@ class ClusterFrame:
         cluster_size = self.pixel_range
         clusters =  self.clusters_list
 
-        # # If cluster is only cluster position [x_pixel, y_pixel]
+        if self.confirmed_stars_ids is not None:
+            confirmed_stars_hip = [int(self.stars_data[x][0]) if x is not None else None for x in self.confirmed_stars_ids]
 
-        for cluster in clusters:
-                # Plot a square around the initial clusters position with size cluster_size
-                cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
-                            (cluster[1] + cluster_size, cluster[0] + cluster_size), (0, 0, 255), 1)
 
-                # Plot a red cross on the initial position of the clusters
-                cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (0, 0, 255), markerType=cv2.MARKER_CROSS, markerSize=5)
+        for i, cluster in enumerate(clusters):
+                
+            # Plot a square around the initial clusters position with size cluster_size
+            cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
+                        (cluster[1] + cluster_size, cluster[0] + cluster_size), (0, 0, 255), 1)
+            # Plot a red cross on the initial position of the clusters
+            cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (0, 0, 255), markerType=cv2.MARKER_CROSS, markerSize=5)
 
-                # Plot the cluster number as text in the top left corner of the cluster
+            # Plot the cluster number as text in the top left corner of the cluster
 
-                if show_confirmed_ids and self.confirmed_stars_ids is not None:
-                    confirmed_stars_hip = [int(self.stars_data[x][0]) if x is not None else None for x in self.confirmed_stars_ids]
-                    for i, cluster in enumerate(clusters):
+            if show_confirmed_ids and self.confirmed_stars_ids is not None:
 
-                        if confirmed_stars_hip[i] is not None:
-                            cv2.putText(img_rgb, str(confirmed_stars_hip[i]), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-                            # Update the square and the cross to green if the star is confirmed
-                            cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
-                                (cluster[1] + cluster_size, cluster[0] + cluster_size), (0, 255, 0), 1)
-                            cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=5)
-                else:
-                    for i, cluster in enumerate(clusters):
-                        cv2.putText(img_rgb, str(i+1), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                # Full confirmed stars  stars (light green)
+                if confirmed_stars_hip[i] is not None:
+
+                    if i not in self.original_confirmed_ids: # Full confirmed stars (light green)
+                        cv2.putText(img_rgb, str(confirmed_stars_hip[i]), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                        # Update the square and the cross to green if the star is confirmed
+                        cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
+                            (cluster[1] + cluster_size, cluster[0] + cluster_size), (0, 255, 0), 1)
+                        cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=5)
+                        
+                    else: # Original confirmed stars (blue)
+                        cv2.putText(img_rgb, str(confirmed_stars_hip[i]), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+                        # Update the square and the cross to green if the star is confirmed
+                        cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
+                            (cluster[1] + cluster_size, cluster[0] + cluster_size), (255, 0, 0), 1)
+                        cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=5)
+                        
+            else:
+                for i, cluster in enumerate(clusters):
+                    cv2.putText(img_rgb, str(i+1), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
         # # # Resize image
         if size is not None:
@@ -353,11 +365,23 @@ class ClusterFrame:
 
         indices_neigh_image = np.array([np.array(self.predcited_stars, dtype=object)[:,0][index] for index in self.indices_image], dtype=object)
 
-        self.confirmed_stars_ids = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
+        self.confirmed_stars_ids, self.original_confirmed_ids = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
                                                     np.array(indices_neigh_image, dtype=object),
                                                     np.array(self.indices_image, dtype=object),
                                                     True)
 
+        #repeat: TODO: OPTIMICE 
+        # self.confirmed_stars_ids.tolist()
+        # indices_neigh_gt  = np.full((len(self.confirmed_stars_ids),self.num_of_neirbours+1 ), None)
+        # for i, predicted_star in enumerate(self.confirmed_stars_ids):
+        #     if predicted_star is not None:
+        #         indices_neigh_gt[i]  = self.indices_dt[predicted_star]
+
+        # self.confirmed_stars_ids, _ = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
+        #                                             np.array(indices_neigh_image, dtype=object),
+        #                                             np.array(self.indices_image, dtype=object),
+        #                                             True)
+        
         self.confirmed_indices = [i for i in range(len(self.confirmed_stars_ids)) if self.confirmed_stars_ids[i] is not None]
 
         self.time_dict['verify_predictions'] = time.time() - time_start
@@ -428,7 +452,8 @@ class ClusterFrame:
             self.update_count -= 1
 
     def print_total_time(self):
-
+        
+        print('-'*50)
         if self.update_count != 0: 
             print(f'Total Time for {self.update_count} frames: (total, average per star) ')
             print(f'     compute_clusters       : {self.total_time_dict["compute_clusters"][0]}, {self.total_time_dict["compute_clusters"][1]}')
@@ -444,7 +469,9 @@ class ClusterFrame:
         else: 
             print(f'No predicted stars, adjust parameters')
 
-    def save_attitude(self, training_name, recording_path, time = None):
+
+    @staticmethod
+    def save_attitude(frame_position, training_name, recording_path, time = None):
         ''' Save the frame center position(attitude) as a new line in a csv file'''
 
         filename = os.path.splitext(os.path.basename(recording_path))[0] 
@@ -458,14 +485,14 @@ class ClusterFrame:
             with open(path, 'a') as f:
                 f.write('# Latitude,Longitude, time \n')
 
-        if self.frame_position is not None:
+        if frame_position is not None:
             with open(path, 'a') as f:
-                f.write(f'{self.frame_position[0]},{self.frame_position[1]},{time}\n')
+                f.write(f'{frame_position[0]},{frame_position[1]},{time}\n')
         else:
             print('Error: No position to save')
 
-
-    def save_stars(self, training_name, recording_path, time = None):
+    @staticmethod
+    def save_stars(confirmed_stars_ids, training_name, recording_path, time = None):
         ''' Save the stars detected and confirmed in a csv file''' 
 
         filename = os.path.splitext(os.path.basename(recording_path))[0] 
@@ -476,10 +503,10 @@ class ClusterFrame:
             with open(path, 'w'):
                 pass
 
-        if self.confirmed_stars_ids is not None:
+        if confirmed_stars_ids is not None:
             with open(path, 'a') as f:
                 f.write(f'{time},')
-                for star in self.confirmed_stars_ids:
+                for star in confirmed_stars_ids:
                     f.write(f'{star},')
                 f.write('\n')
         else:
