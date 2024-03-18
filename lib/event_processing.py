@@ -619,10 +619,10 @@ def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_imag
                 if indices_neigh_image[i][j] == indices_neigh_gt[i][j]: # If neighbours MATCH +1 for the star and the neighbour 
                     check_points[i] += 1
                     check_points[indices_image[i][j]] += 1
-                # elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
-                #     check_points[i] -= 1
-                #     check_points[indices_image[i][j]] -= 1
-                #     break
+                elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
+                    check_points[i] -= 1
+                    check_points[indices_image[i][j]] -= 1
+                    break
 
     confirmed_indices = [i for i in range(len(check_points)) if check_points[i] > 0] # Index of original list of confrimed stars
     confirmed_stars_ids = np.full(len(indices_neigh_gt), None)
@@ -634,4 +634,4 @@ def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_imag
         for index in confirmed_indices:
             confirmed_stars_ids[index] = indices_neigh_gt[index][0] # WITH IDS NOT HIP NUMBER 
 
-    return confirmed_stars_ids
+    return confirmed_stars_ids, confirmed_indices
