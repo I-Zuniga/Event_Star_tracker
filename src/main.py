@@ -1,5 +1,6 @@
 # Get system path 
 from calendar import c
+from logging import logProcesses
 import os
 
 from scipy import cluster
@@ -13,8 +14,10 @@ from metavision_core.event_io import EventsIterator
 import numpy as np
 import matplotlib.pyplot as plt
 import yaml
-import time
 
+import queue
+import threading
+import time
 
 from lib.utils import *
 from lib.plot_utils import *   
@@ -89,12 +92,36 @@ def parse_args():
 
     return args
 
+def data_timer( args, send_time):
+    '''Send data every "time" seconds.'''
+    start_time = time.time()
+    while True:
+        current_time = time.time()
+        if current_time - start_time >= send_time:
 
-def main():
+            if not data_queue.empty():
+                if args.save_stars:
+                    # TODO: save_stars_queue = queue.Queue()
+                    # ClusterFrame.save_stars(
+                    #     save_stars_queue.get(),
+                    #     training_name = args.train_folder, 
+                    #     recording_path=args.input_path, 
+                    #     time = time.time() - start_time)
+                    print('save_stars Not implemented yet.')
+                    
+                if args.save_attitude:
+                    ClusterFrame.save_attitude(
+                        data_queue.get(),
+                        training_name = args.train_folder, 
+                        recording_path=args.input_path, 
+                        time = time.time() - start_time)
+                    print('saving position', data_queue.get())
+            start_time = time.time() # Reset the timer
+
+def run_star_tracker(args):
     """ Main """
 
     start_time = time.time()    
-    args = parse_args()
 
     # Events iterator on Camera or RAW file
     mv_iterator = EventsIterator(input_path=args.input_path, delta_t=args.delta_t)
@@ -135,13 +162,14 @@ def main():
         # garantize data each second 
         # resaerch benchamarck in LIS and recursive
 
-        # PowerCOnsumption 
+        # PowerConsumption 
 
         if len(frames) == args.buffer_size:
 
             buffer_time = time.time()
-            print('New max buffer: ', buffer_time - start_time)
 
+            # Compuatation calls #
+            #--------------------#
             compact_frame = blend_buffer(frames, mirror=True)
 
             cluster_frame.update_clusters(compact_frame)
@@ -152,33 +180,42 @@ def main():
 
             cluster_frame.compute_frame_position()
 
-            print(cluster_frame.time_dict)
+            data_queue.put(cluster_frame.frame_position) # Send data to the queue
+
             cluster_frame.update_total_time()
 
+
+            # Visualization, verbose and saving #
+            #-----------------------------------#
             if args.verbose: 
+                print('-'*50)
+                print('New max buffer: ', buffer_time - start_time)
                 cluster_frame.info(show_time = args.show_time)
+
             if args.show_video:
                 close_callbcak = cluster_video.update_frame(cluster_frame.plot_cluster_cv(show_confirmed_ids=True))
                 if close_callbcak:
                     cv2.destroyAllWindows()
                     break
 
-            if args.save_stars:
-                cluster_frame.save_stars(
-                    training_name = args.train_folder, 
-                    recording_path=args.input_path, 
-                    time = time.time() - start_time)
-            if args.save_attitude:
-                cluster_frame.save_attitude(
-                    training_name = args.train_folder, 
-                    recording_path=args.input_path, 
-                    time = time.time() - start_time)
-
-            cluster_frame.time_dict 
-                    
             frames.clear()
 
     cluster_frame.print_total_time()
+
+
+data_queue = queue.Queue() # Attitude data queue
+
+def main():
+    args = parse_args()
+    star_tracker_thread = threading.Thread(target=run_star_tracker, args=(args,))
+    # data_thread = threading.Thread(target=data_timer, args=(args, 1.0))
+
+    star_tracker_thread.start()
+    # data_thread.start()
+
+    star_tracker_thread.join()
+    # data_thread.join()
+
 
 if __name__ == "__main__":
     main()
