@@ -10,13 +10,12 @@ parent = os.path.dirname(path)
 #Add parent directory to system path
 os.sys.path.insert(0, parent)
 
-from metavision_core.event_io import EventsIterator
 import numpy as np
-import matplotlib.pyplot as plt
 import yaml
 
 import queue
 import threading
+import multiprocessing
 import time
 
 from lib.utils import *
@@ -92,13 +91,14 @@ def parse_args():
 
     return args
 
-def data_timer( args, send_time):
+def data_timer( args, send_time, terminate_event):
     '''Send data every "time" seconds.'''
     start_time = time.time()
-    while True:
-        current_time = time.time()
-        if current_time - start_time >= send_time:
+    loop_time = time.time()
 
+    while not terminate_event.is_set():
+        current_time= time.time()
+        if current_time - loop_time >= send_time:
             if not data_queue.empty():
                 if args.save_stars:
                     # TODO: save_stars_queue = queue.Queue()
@@ -116,7 +116,7 @@ def data_timer( args, send_time):
                         recording_path=args.input_path, 
                         time = time.time() - start_time)
                     print('saving position', data_queue.get())
-            start_time = time.time() # Reset the timer
+            loop_time = time.time() # Reset the timer
 
 def run_star_tracker(args):
     """ Main """
@@ -131,7 +131,7 @@ def run_star_tracker(args):
     event_frame_gen = PeriodicFrameGenerationAlgorithm(width, height, accumulation_time_us=args.accumulation_time_us)
 
     # Init Cluster Frame and Video
-    innit_fame = np.zeros((height, width), dtype=np.uint8)
+    innit_fame = np.zeros((height, width,1), dtype=np.uint8)
     cluster_frame = ClusterFrame(
         innit_fame,
         pixel_to_deg = args.pixel_to_deg,
@@ -147,7 +147,9 @@ def run_star_tracker(args):
 
     def on_cd_frame_cb(ts, cd_frame):
         # window.show(cd_frame)
-        frames.append(cd_frame)
+        gray_frame = cv2.cvtColor(cd_frame, cv2.COLOR_BGR2GRAY)
+        frames.append(gray_frame)  
+        
 
     event_frame_gen.set_output_callback(on_cd_frame_cb)
 
@@ -168,6 +170,7 @@ def run_star_tracker(args):
 
             buffer_time = time.time()
 
+            #--------------------#
             # Compuatation calls #
             #--------------------#
             compact_frame = blend_buffer(frames, mirror=True)
@@ -182,9 +185,9 @@ def run_star_tracker(args):
 
             data_queue.put(cluster_frame.frame_position) # Send data to the queue
 
-            cluster_frame.update_total_time()
+            cluster_frame.update_total_time() # Can be commented to improve performance
 
-
+            #-----------------------------------#
             # Visualization, verbose and saving #
             #-----------------------------------#
             if args.verbose: 
@@ -203,18 +206,28 @@ def run_star_tracker(args):
     cluster_frame.print_total_time()
 
 
-data_queue = queue.Queue() # Attitude data queue
+data_queue = multiprocessing.Queue() # Attitude data queue
 
 def main():
     args = parse_args()
-    star_tracker_thread = threading.Thread(target=run_star_tracker, args=(args,))
-    # data_thread = threading.Thread(target=data_timer, args=(args, 1.0))
 
-    star_tracker_thread.start()
-    # data_thread.start()
+    # Event to signal other processes to terminate
+    terminate_event = multiprocessing.Event()
+    
+    star_tracker_process = multiprocessing.Process(target=run_star_tracker, args=(args,))
+    data_process = multiprocessing.Process(target=data_timer, args=(args, 1.0, terminate_event))
 
-    star_tracker_thread.join()
-    # data_thread.join()
+    star_tracker_process.start()
+    data_process.start()
+
+    # Wait for the star_tracker_process to terminate
+    star_tracker_process.join()
+
+    # Set the terminate event to signal other processes to terminate
+    terminate_event.set()
+
+    # Wait for the data_process to terminate
+    data_process.join()
 
 
 if __name__ == "__main__":
