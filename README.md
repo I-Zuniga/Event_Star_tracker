@@ -9,6 +9,9 @@ $ python3 main.py --load-params ./parameters.yaml
 $ ssh eventjetson@10.157.95.86
 $ ssh eventjetson@10.183.239.148
 
+# Optuna
+$ optuna-dashboard sqlite:///db.sqlite3 
+
 # Screen 
 
 screen -S NAME_SCREEN : Create screen 
