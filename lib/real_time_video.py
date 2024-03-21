@@ -30,7 +30,7 @@ class ClusterVideo:
     
 class ClusterFrame: 
     def __init__(self, frame, pixel_to_deg, index_clustering = True, mass_treshold = None, treshold_filter = 0.2, pixel_range = 15, max_number_of_clusters = 30):
-        self.frame = frame
+        self.frame = np.squeeze(frame)
 
         # Parameters & options for filtering
         self.treshold = treshold_filter # Percetange of max value 
@@ -65,28 +65,50 @@ class ClusterFrame:
         self.update_count = 0
 
 
+    
     def compute_clusters(self):
+
+        start_time = time.perf_counter()
 
         frame = cv2.blur(self.frame,(3,3))
         frame = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX)
 
-        max_val = np.max(frame)
-        frame_thr = cv2.threshold(frame, max_val*self.treshold, 1, cv2.THRESH_TOZERO)[1]
+        time_norm = time.perf_counter() -start_time
+        print('Time normalize + blur: ', time_norm)
+
+        start_time = time.perf_counter()
+        frame_thr = cv2.threshold(frame, 255*self.treshold, 1, cv2.THRESH_TOZERO)[1]
+        time_thr = time.perf_counter() -start_time 
+        print('Time threshold: ', time_thr)
         
+        start_time = time.perf_counter()
         clusters =  max_value_cluster(frame_thr, self.pixel_range, self.max_number_of_clusters)
+        time_cluster = time.perf_counter() -start_time 
+        print('Time cluster: ', time_cluster)
+
+        start_time = time.perf_counter()
         clusters = sorted(clusters, key=lambda x: x[1], reverse=True)
         clusters_index = np.array([cluster[0] for cluster in clusters])
         clusters_index = sorted(clusters_index, key=lambda x: x[1], reverse=True)
+        time_sort = time.perf_counter() -start_time 
+        print('Time sort: ', time_sort)
 
         if self.index_clustering:
+
+            start_time = time.perf_counter()
             self.clusters_list_full = index_cluster(frame, self.pixel_range, clusters_index)
+            time_index = time.perf_counter() -start_time 
+            print('Time index: ', time_index)
 
         if self.mass_treshold is not None:
             treshold_val = self.mass_treshold*np.max([cluster_mass[1] for cluster_mass in  self.clusters_list_full])
             self.clusters_list_full = [cluster for cluster in self.clusters_list_full if cluster[1] > treshold_val ]
 
+        start_time = time.perf_counter()
         self.clusters_list_full, _= order_by_center_dist(self.clusters_list_full, self.frame.shape)
         self.clusters_list = [x[0] for x in self.clusters_list_full]
+        time_order = time.perf_counter() -start_time 
+        print('Time order: ', time_order)
 
     
     def update_clusters(self, frame):
@@ -233,19 +255,19 @@ class ClusterFrame:
 
                     if i not in self.original_confirmed_ids: # Full confirmed stars (light green)
                         cv2.putText(img_rgb, str(confirmed_stars_hip[i]), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                        # Update the square and the cross to green if the star is confirmed
+                        cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
+                            (cluster[1] + cluster_size, cluster[0] + cluster_size), (255, 255, 0), 1)
+                        cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (255, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=5)
+                        
+                    else: # Original confirmed stars (blue)
+                        cv2.putText(img_rgb, str(confirmed_stars_hip[i]), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                         # Update the square and the cross to green if the star is confirmed
                         cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
                             (cluster[1] + cluster_size, cluster[0] + cluster_size), (0, 255, 0), 1)
                         cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (0, 255, 0), markerType=cv2.MARKER_CROSS, markerSize=5)
-                        
-                    else: # Original confirmed stars (blue)
-                        cv2.putText(img_rgb, str(confirmed_stars_hip[i]), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
-                        # Update the square and the cross to green if the star is confirmed
-                        cv2.rectangle(img_rgb, (cluster[1] - cluster_size, cluster[0] - cluster_size),
-                            (cluster[1] + cluster_size, cluster[0] + cluster_size), (255, 0, 0), 1)
-                        cv2.drawMarker(img_rgb, (cluster[1], cluster[0]), (255, 0, 0), markerType=cv2.MARKER_CROSS, markerSize=5)
                         
             else:
                 for i, cluster in enumerate(clusters):
@@ -310,7 +332,23 @@ class ClusterFrame:
             #Order by distance to the main star at the loop
             self.stars_sorted_by_main, index_sort = order_by_main_dist(main_star, self.clusters_list, True)
             self.indices_image.append(index_sort[0:self.num_of_neirbours+1])
+
+
+            # feature_type_1 = 'permutation_multi'
+            # feature_type_2 = 'permutation'
+                
+            # stars_features_1 = get_star_features_2(
+            #     self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+            #     feature_type_1,
+            #     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
+            # )
+            # stars_features_2 = get_star_features_2(
+            #     self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+            #     feature_type_2,
+            #     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
+            # )
             
+            # Old version
             stars_features_1, stars_features_2 = get_star_features(self.stars_sorted_by_main[0:self.num_of_neirbours+1],
                                                 self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV)
 
@@ -381,8 +419,8 @@ class ClusterFrame:
         #                                             np.array(indices_neigh_image, dtype=object),
         #                                             np.array(self.indices_image, dtype=object),
         #                                             True)
-        
-        self.confirmed_indices = [i for i in range(len(self.confirmed_stars_ids)) if self.confirmed_stars_ids[i] is not None]
+
+        self.confirmed_indices = [i for i, star_id in enumerate(self.confirmed_stars_ids) if star_id is not None]
 
         self.time_dict['verify_predictions'] = time.time() - time_start
 

@@ -15,11 +15,20 @@ def blend_buffer(frames_buffer, mirror = False):
         mirror (bool): if True the frame is mirror
     Returns:
     -------
-        blend (np.array): compacted frame
-    
-            
+        blend (np.array): compacted frame        
     '''
 
+    # Stack all grayscale frames along a new axis
+    stacked_frames = np.stack(frames_buffer, axis=-1)
+
+    # Average the values along the last axis
+    blend = np.mean(stacked_frames, axis=-1)
+
+    # Mirror the image
+    if mirror:
+        blend = np.fliplr(blend)
+
+    return blend.astype(np.uint8)  # Convert back to uint8 before returning
 
     blend = np.array(np.zeros((cv2.cvtColor(np.array(frames_buffer[0]), cv2.COLOR_BGR2GRAY).shape)))
 
@@ -31,7 +40,6 @@ def blend_buffer(frames_buffer, mirror = False):
     # mirror the image
     if mirror:
         blend = np.fliplr(blend)
-
 
     return blend.astype(np.uint8)
 
@@ -45,11 +53,9 @@ def calibration_blend(frames_buffer):
     Returns:
     -------
             blend (np.array): compacted frame
-    
-            
+
             '''
-
-
+    
     blend = np.array(np.zeros((cv2.cvtColor(np.array(frames_buffer[0]), cv2.COLOR_BGR2GRAY).shape)))
 
     for frame in frames_buffer:
@@ -244,6 +250,10 @@ def index_cluster(img, pixel_range, clusters_index):
 
     return clusters
 
+import cv2
+import numpy as np
+
+
 def order_by_center_dist(clusters, img_shape):
     '''
     Order the clusters by the distance to the center of the image.
@@ -264,6 +274,17 @@ def order_by_center_dist(clusters, img_shape):
     clusters_dist : array
             Array with the distance of each cluster to the center of the image.
     '''
+    
+    # New version: TODO: Check compatibility
+    img_center = np.array(img_shape) / 2
+    clusters_positions = np.array([cluster[0] for cluster in clusters])
+    clusters_dist = np.linalg.norm(clusters_positions - img_center, axis=1)
+    sorted_indices = np.argsort(clusters_dist)
+    clusters = [clusters[i] for i in sorted_indices]
+    clusters_dist = clusters_dist[sorted_indices]
+
+    return clusters, clusters_dist
+
     img_center = np.array(img_shape)/2
     clusters = sorted(clusters, key=lambda x: np.linalg.norm(x[0] - img_center), reverse=False)
 
@@ -374,7 +395,7 @@ def get_star_features_2(star_list,feature_type, ref_pixel_to_deg = 1, reference_
         List of stars. Each star is a list with the following structure:
             [main_star[x_pixel, y_pixel], first_neirbour_star[x_pixel, y_pixel], second_neirbour_star[x_pixel, y_pixel], ...]
     feature_type : str
-        Type of feature to be computed. Options: 'log_polar', 'permutation'
+        Type of feature to be computed. Options: 'log_polar', 'permutation', 'permuatation_suffled', 'permutation_log', 'permutation_log_polar', 'permutation_angle', 'permutation_multi'
 
     '''  
     star_features_1 = []
@@ -390,7 +411,7 @@ def get_star_features_2(star_list,feature_type, ref_pixel_to_deg = 1, reference_
         for j in range(len(star_list)):
             if j == 1:
                 star_features_1.extend(log_polar_transform(star_list[0],star_list[j], star_list[1])) 
-                star_features_1.pop()# Avoid angle =0 
+                # star_features_1.pop()# Avoid angle =0 
                 
             if j > 1:
                 # Log polar transform
@@ -617,8 +638,8 @@ def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_imag
         if indices_neigh_gt[i][0] is not None:
             for j in range(1,len(indices_neigh_image[i])): # For all the neighbours of the cluster [1,5]
                 if indices_neigh_image[i][j] == indices_neigh_gt[i][j]: # If neighbours MATCH +1 for the star and the neighbour 
-                    check_points[i] += 1
-                    check_points[indices_image[i][j]] += 1
+                    check_points[i] += 2
+                    check_points[indices_image[i][j]] += 2
                 elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
                     check_points[i] -= 1
                     check_points[indices_image[i][j]] -= 1
