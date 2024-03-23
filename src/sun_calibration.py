@@ -42,50 +42,74 @@ def main():
     height, width = mv_iterator.get_size()  # Camera Geometry
             
     # Event Frame Generator
-    event_frame_gen = PeriodicFrameGenerationAlgorithm(width, height, 
-                                                       accumulation_time_us=10000)
-
+    event_frame_gen = PeriodicFrameGenerationAlgorithm(width, height, accumulation_time_us=10000)
 
     frames = []
 
     def on_cd_frame_cb(ts, cd_frame):
-        # window.show(cd_frame)
         frames.append(cd_frame)
 
     event_frame_gen.set_output_callback(on_cd_frame_cb)
 
-    cont = 0
-
     sun_aparent_diameter = 0.54152 # From stelarium [degrees]
-    FOV = 2                # From stelarium (Depends on zoom) [degrees]
 
-
-    max_buffer = 700
+    max_buffer = 1000
 
     for evs in mv_iterator:
         event_frame_gen.process_events(evs)
 
         if len(frames) == max_buffer:
-            compact_frame = calibration_blend(frames).astype(np.uint8)
-            
-            frame = cv2.threshold(compact_frame, 100, 1, cv2.THRESH_TOZERO)[1]
 
-            for i in range(100):
+            frame = calibration_blend(frames).astype(np.uint8)
+
+            cv2.imshow("Original frame", frame)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
+            frame = cv2.threshold(frame*255, 120, 1, cv2.THRESH_BINARY)[1]
+            frame = frame*255
+            for i in range(1):
                 frame = cv2.blur(frame,(5,5))
-                frame = cv2.threshold(frame, 5, 1, cv2.THRESH_TOZERO)[1]
+
+            frame = cv2.threshold(frame*255, 100, 1, cv2.THRESH_BINARY)[1]
+
+            frame = frame*255
+            for i in range(2):
+                frame = cv2.blur(frame,(5,5))
             
-            circles = cv2.HoughCircles(frame, cv2.HOUGH_GRADIENT, 1, 300,
-						   param1=10,param2=30,minRadius=200,maxRadius=600)
+            image = frame
+            # plot_image(image)
+
+            output = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            gray =  image
+
+            circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, 1000,
+						   param1=15,param2=15,minRadius=50,maxRadius=300)
 
             if circles is not None:
+                circles = np.round(circles[0, :]).astype("int")
 
-                if len(circles) > 1:
-                    print("Error: More than one circle detected")
-                else:
-                    print('Circle detected, diameter: ', circles[0][0][2]*2, ' [pixels], pixel to degree ratio: '
-                        , sun_aparent_diameter/circles[0][0][2]*2, ' [degrees/pixel]',    'FOV: ', FOV, ' [degrees]')
+                for (x, y, r) in circles:
+
+                    cv2.circle(output, (x, y), r, (0, 255, 0), 4)
+                    cv2.rectangle(output, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
+
+                    print(f"Circle center: {x,y} , radius: {r}")
+
+
+                sun_aparent_diameter = 0.54152 # From stelarium [degrees]
+                print('Circle detected, diameter: ', r*2, ' [pixels], pixel to degree ratio: '
+                        , sun_aparent_diameter/(r*2), ' [degrees/pixel]', sun_aparent_diameter/(r*2)*3600, ' [arcsec/pixel]')
+
+                # show the output image
+                cv2.imshow("output", output)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+
+
             else:
-                print('No circle detected')
+                print("No circles found")
+
 
             frames = []
     
