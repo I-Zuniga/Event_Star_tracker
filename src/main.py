@@ -1,20 +1,12 @@
 # Get system path 
-from calendar import c
-from logging import logProcesses
 import os
-
-from scipy import cluster
-path = os.getcwd()
-# Get parent directory
-parent = os.path.dirname(path)
-#Add parent directory to system path
+path = os.getcwd() # Get parent directory
+parent = os.path.dirname(path)#Add parent directory to system path
 os.sys.path.insert(0, parent)
 
 import numpy as np
 import yaml
 
-import queue
-import threading
 import multiprocessing
 import time
 
@@ -54,6 +46,7 @@ def parse_args():
     parser.add_argument('--pixel-range', type=int, default=15, help='batch size')
     parser.add_argument('--mass-treshold', type=int, default=0.0, help='mass treshold')
     parser.add_argument('--max-n-clusters', type=int, default=30, help='max number of clusters')
+    parser.add_argument('--compute-ids', action='store_true', default=True, help='if enabled, ids will be computed')
     
     # Event frames parameters
     parser.add_argument('--accumulation-time-us', type=int, default=50000, help='accumulation time in us')
@@ -114,7 +107,8 @@ def data_timer( args, send_time, terminate_event):
                         data_queue.get(),
                         training_name = args.train_folder, 
                         recording_path=args.input_path, 
-                        time = time.time() - start_time)
+                        time = time.time() - start_time
+                        )
                     print('saving position', data_queue.get())
             loop_time = time.time() # Reset the timer
 
@@ -143,12 +137,13 @@ def run_star_tracker(args):
     cluster_frame.load_som_parameters(args.train_folder)
     cluster_frame.load_star_catalog(args.star_catalog_path)
     cluster_video = ClusterVideo()
-    frames = []  # TODO: Change to np.array?
+    global frames
+    frames = np.empty((0, height, width), dtype=np.uint8) 
 
     def on_cd_frame_cb(ts, cd_frame):
-        # window.show(cd_frame)
-        gray_frame = cv2.cvtColor(cd_frame, cv2.COLOR_BGR2GRAY)
-        frames.append(gray_frame)  
+        global frames  # Add this line to access the global frames variable
+        gray_frame = np.reshape(cv2.cvtColor(cd_frame, cv2.COLOR_BGR2GRAY), (1, height, width))
+        frames = np.append(frames,gray_frame, axis=0)  # Append the gray_frame as a new row to the frames array
         
 
     event_frame_gen.set_output_callback(on_cd_frame_cb)
@@ -177,16 +172,20 @@ def run_star_tracker(args):
 
             cluster_frame.update_clusters(compact_frame)
 
-            cluster_frame.compute_ids_predictions()
+            if args.compute_ids:
 
-            cluster_frame.verify_predictions()
+                cluster_frame.compute_ids_predictions()
 
-            cluster_frame.compute_frame_position()
+                cluster_frame.verify_predictions()
 
-            data_queue.put(cluster_frame.frame_position) # Send data to the queue
+                cluster_frame.compute_frame_position()
 
-            cluster_frame.update_total_time() # Can be commented to improve performance
+                data_queue.put(cluster_frame.frame_position) # Send data to the queue
 
+                cluster_frame.update_total_time() # Can be commented to improve performance
+
+            
+            # DuckIp o noDNS 
             #-----------------------------------#
             # Visualization, verbose and saving #
             #-----------------------------------#
@@ -200,8 +199,9 @@ def run_star_tracker(args):
                 if close_callbcak:
                     cv2.destroyAllWindows()
                     break
-
-            frames.clear()
+            
+            frames = np.empty((0, height, width), dtype=np.uint8) 
+            # frames.clear()
 
     cluster_frame.print_total_time()
 

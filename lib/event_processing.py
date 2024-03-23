@@ -2,46 +2,22 @@ from metavision_core.event_io import EventsIterator
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-
+from numba import jit, njit
 from scipy.optimize import minimize
 
-
+@njit
 def blend_buffer(frames_buffer, mirror = False):
-    ''' Get a frame buffer and compacts it into a single frame
+    ''' Get a frame buffer and compacts it into a single frame '''
+    stacked_frames = np.zeros(frames_buffer[0].shape, dtype=np.uint16) 
+
+    for i in range(frames_buffer.shape[0]):
+        stacked_frames += frames_buffer[i]
+    blend = stacked_frames / frames_buffer.shape[0] # Average the frames
+
+    if mirror:
+        blend = np.fliplr(blend)
     
-    Parameters:
-    ----------
-        frames_buffer (list): list of frames to be compacted   
-        mirror (bool): if True the frame is mirror
-    Returns:
-    -------
-        blend (np.array): compacted frame        
-    '''
-
-    # Stack all grayscale frames along a new axis
-    stacked_frames = np.stack(frames_buffer, axis=-1)
-
-    # Average the values along the last axis
-    blend = np.mean(stacked_frames, axis=-1)
-
-    # Mirror the image
-    if mirror:
-        blend = np.fliplr(blend)
-
     return blend.astype(np.uint8)  # Convert back to uint8 before returning
-
-    blend = np.array(np.zeros((cv2.cvtColor(np.array(frames_buffer[0]), cv2.COLOR_BGR2GRAY).shape)))
-
-    for frame in frames_buffer:
-        gray = cv2.cvtColor(np.array(frame), cv2.COLOR_BGR2GRAY)
-        blend += gray
-    blend = blend/len(frames_buffer)
-
-    # mirror the image
-    if mirror:
-        blend = np.fliplr(blend)
-
-    return blend.astype(np.uint8)
 
 
 def calibration_blend(frames_buffer):
