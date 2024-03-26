@@ -1,5 +1,4 @@
-
-from chardet import detect
+import re
 from metavision_core.event_io import EventsIterator
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,8 +44,8 @@ class ClusterFrame:
         self.recording_FOV = pixel_to_deg['recording_FOV'] #In degrees
         self.num_of_neirbours = 4
 
-        self.clusters_list_full = [] # List of clusters: [ [x_pixel, y_pixel], cluster comulative mass]
-        self.clusters_list = []  # List of clusters: [ [x_pixel, y_pixel] ]
+        # self.clusters_list_full = [] # List of clusters: [ [x_pixel, y_pixel], cluster comulative mass]
+        # self.clusters_list = []  # List of clusters: [ [x_pixel, y_pixel] ]
         self.predcited_stars = None
         self.confirmed_stars_ids = None
 
@@ -562,3 +561,124 @@ class ClusterFrame:
                 f.write('\n')
         else:
             print('Error: No stars to save')
+
+
+
+# Optimiced version of the cluster algorithm
+    def compute_clusters_2(self):
+
+        frame = cv2.blur(self.frame,(3,3))
+        frame = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX)
+
+        self.frame_thr = frame_threshold(frame, self.treshold)
+
+        clusters =  max_value_cluster_2(self.frame_thr, self.pixel_range, self.max_number_of_clusters)
+
+        self.clusters_list_full = sort_by_mass(clusters)
+
+        if self.index_clustering:
+            self.clusters_list_full = index_cluster_2(frame, self.pixel_range, self.clusters_list_full[:,0:2])
+
+        if self.mass_treshold is not None:
+            treshold_val = self.mass_treshold*np.max(self.clusters_list_full[:,2])
+            self.clusters_list_full = self.clusters_list_full[self.clusters_list_full[:,2] > treshold_val]
+
+        self.clusters_list = self.clusters_list_full[:,0:2]
+
+
+    def compute_ids_predictions_2(self):
+        time_start = time.time()
+
+        time_sort = 0 #delete
+        time_features = 0 #delete
+        time_predict = 0 #delete
+        logic_time = 0 #delete
+        intersection_time = 0 #delete
+        
+
+        if self.clusters_list.shape[0] > 5:
+            self.indices_image = np.empty((self.clusters_list.shape[0],5), dtype=np.uint8)
+            self.predcited_stars = np.empty((self.clusters_list.shape[0],2), dtype=np.uint32)
+
+            for i, main_star in enumerate(self.clusters_list):
+
+                #Order by distance to the main star at the loop
+                start_time = time.perf_counter() #delete
+                self.stars_sorted_by_main, index_sort = order_by_main_dist_2(main_star, self.clusters_list, True)
+                self.indices_image[i,:] = index_sort[0:self.num_of_neirbours+1]
+                time_sort += time.perf_counter() - start_time #delete
+
+                feature_type_1 = 'permutation_multi'
+                feature_type_2 = 'permutation'
+                    
+                # stars_features_1 = get_star_features_2(
+                #     self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                #     feature_type_1,
+                #     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
+                # )
+                # stars_features_2 = get_star_features_2(
+                #     self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                #     feature_type_2,
+                #     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
+                # )
+                
+                # Old version
+                start_time = time.perf_counter() #delete
+                stars_features_1, stars_features_2 = get_star_features_fast(self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                                                    self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV)
+                time_features += time.perf_counter() - start_time #delete
+
+                # Get prediction index
+                start_time = time.perf_counter() #delete
+                predicted_star_ids_1, act_1 = predict_star_id_2(stars_features_1, self.norm_param[0:2], self.star_dict_1, self.som1)
+                predicted_star_ids_2, act_2 = predict_star_id_2(stars_features_2, self.norm_param[2:4], self.star_dict_2, self.som2)
+                time_predict += time.perf_counter() - start_time #delete
+
+                start_time = time.perf_counter() #delete
+                star_guess = self.get_star_guess(predicted_star_ids_1, predicted_star_ids_2, act_1, act_2)
+                logic_time += time.perf_counter() - start_time
+
+                # Get the intersection of the two predictions if there is only one star in common
+                start_time = time.perf_counter()
+                if len(star_guess) == 1:
+                    star_guess_index = star_guess[0]
+                    star_guess_id = self.stars_data[star_guess_index].astype(int)[0]
+                else:
+                    star_guess_index = 0
+                    star_guess_id = 0
+
+                self.predcited_stars[i] = (star_guess_index, star_guess_id)
+                intersection_time += time.perf_counter() - start_time
+
+            self.time_dict['compute_ids_predictions'] = time.time() - time_start
+        else: 
+            print('Error: Not enough clusters to compute predictions')
+            self.predcited_stars = None
+
+        print('Time sort: ', time_sort)
+        print('Time features: ', time_features) 
+        print('Time predict: ', time_predict)
+        print('Time logic: ', logic_time)
+        print('Time intersection: ', intersection_time)
+
+    def get_star_guess(self, predicted_star_ids_1, predicted_star_ids_2, activation_som1, activation_som2):
+
+        if predicted_star_ids_1[0] == 0: # If no match of SOM1 (id returned is 0) use directly the SOM2 result
+            star_guess = predicted_star_ids_2
+        elif predicted_star_ids_2[0] == 0: # If no match of SOM2 (id returned is 0) use directly the SOM1 result
+            star_guess = predicted_star_ids_1
+        else:
+            star_guess = list(set(predicted_star_ids_1).intersection(predicted_star_ids_2))
+
+        if len(star_guess) == 0: # Second guees 
+            if len(predicted_star_ids_1) == 1 and len(predicted_star_ids_2) != 1:
+                star_guess = (predicted_star_ids_1)
+            elif len(predicted_star_ids_2) == 1 and len(predicted_star_ids_1) != 1:
+                star_guess = (predicted_star_ids_2)
+            elif len(predicted_star_ids_2) == 1 and len(predicted_star_ids_1) == 1:
+                if activation_som1 < activation_som2:
+                    star_guess = predicted_star_ids_1
+                else:
+                    star_guess = predicted_star_ids_2
+
+        return star_guess

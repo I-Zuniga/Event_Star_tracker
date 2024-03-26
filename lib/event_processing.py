@@ -2,6 +2,7 @@ from metavision_core.event_io import EventsIterator
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
+import numba
 from numba import jit, njit
 from scipy.optimize import minimize
 
@@ -311,7 +312,6 @@ def order_by_main_dist(main_cluster, clusters, get_index = False):
             for cluster in [x[1] for x in sorted_clusters]:
                 sorted_clusters_index.append([x[1] for x in clusters].index(cluster))
             return sorted_clusters, sorted_clusters_index
-
 
     return sorted_clusters
 
@@ -632,3 +632,221 @@ def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_imag
             confirmed_stars_ids[index] = indices_neigh_gt[index][0] # WITH IDS NOT HIP NUMBER 
 
     return confirmed_stars_ids, confirmed_indices
+
+# -------------------------------#
+# Optimiced functions with numba #
+# -------------------------------#
+
+
+@njit(fastmath = True)
+def get_cluster_cg(start_row, end_row, start_col, end_col, img): 
+
+    cluster_x = 0
+    cluster_y = 0
+    cluster_mass = 0
+
+    for i in range(start_row, end_row):
+        for j in range(start_col, end_col):
+            value = img[i, j]
+            cluster_x += i * value
+            cluster_y += j * value
+            cluster_mass += value
+    return cluster_x, cluster_y, cluster_mass
+
+@njit
+def delete_pixels(img, start_row, end_row, start_col, end_col):
+    for i in range(start_row, end_row):
+        for j in range(start_col, end_col):
+            img[i, j] = 0
+    return img
+
+@njit(parallel=True, fastmath=True)
+def get_argmax(frame):
+    return np.argmax(frame)
+
+@njit
+def get_max_index(frame):
+    max_value = -1
+    max_index = (0, 0)
+    for i in range(frame.shape[0]):
+        for j in range(frame.shape[1]):
+            value = frame[i, j]
+            if value > max_value:
+                max_value = value
+                max_index = (i, j)
+    return max_index
+
+@njit
+def sort_by_mass(clusters):
+    return clusters[np.argsort(clusters[:, 2])[::-1]]
+
+@njit(parallel=True)
+def frame_threshold(frame, treshold):
+    return frame * (frame > 255*treshold)
+
+
+@njit(fastmath=True)
+def max_value_cluster_2(frame, pixel_range, n_clusters):
+
+    img = np.copy(frame)
+    clusters = np.empty((1,3), dtype=np.int32)
+
+    height, width = img.shape
+    
+    for _ in range(n_clusters):
+
+        # max_index = np.unravel_index(get_argmax(img), img.shape)
+        max_index = get_max_index(img)
+
+        start_row = max_index[0] - pixel_range
+        end_row = max_index[0] + pixel_range + 1
+        start_col = max_index[1] - pixel_range
+        end_col = max_index[1] + pixel_range + 1
+
+        if start_row < 0:
+            start_row = 0
+        if end_row > height:
+            end_row = height
+        if start_col < 0:
+            start_col = 0
+        if end_col > width:
+            end_col = width
+
+
+        cluster_x, cluster_y, cluster_mass = get_cluster_cg(start_row, end_row, start_col, end_col, img)
+
+        if cluster_mass != 0:
+            centroid_x = np.int32(cluster_x / cluster_mass)
+            centroid_y = np.int32(cluster_y / cluster_mass)
+            cluster = np.reshape( np.array( (centroid_x, centroid_y, cluster_mass), dtype=np.int32), (1,3))
+            clusters = np.append(clusters, cluster, axis=0)
+        
+        delete_pixels(img, start_row, end_row, start_col, end_col)    
+
+    return clusters
+
+@njit
+def index_cluster_2(frame, pixel_range, clusters_index):
+
+    img = np.copy(frame)
+    clusters = np.empty((1,3), dtype=np.int32)
+
+    height, width = img.shape
+
+    for cluster in clusters_index:
+        
+        max_index = (cluster[0], cluster[1])
+
+        cluster_x = 0
+        cluster_y = 0
+        cluster_mass = 0
+
+        start_row = max_index[0] - pixel_range
+        end_row = max_index[0] + pixel_range + 1
+        start_col = max_index[1] - pixel_range
+        end_col = max_index[1] + pixel_range + 1
+
+        if start_row < 0:
+            start_row = 0
+        if end_row > height:
+            end_row = height
+        if start_col < 0:
+            start_col = 0
+        if end_col > width:
+            end_col = width
+
+        # Calculate cluster properties
+        cluster_x, cluster_y, cluster_mass = get_cluster_cg(start_row, end_row, start_col, end_col, img)
+
+        if cluster_mass != 0:
+            centroid_x = np.int32(cluster_x / cluster_mass)
+            centroid_y = np.int32(cluster_y / cluster_mass)
+            cluster = np.reshape( np.array( (centroid_x, centroid_y, cluster_mass), dtype=np.int32), (1,3))
+
+            clusters = np.append(clusters, cluster, axis=0)
+
+        # Set clustered pixels to 0
+        img = delete_pixels(img, start_row, end_row, start_col, end_col)
+
+
+    return clusters
+
+def order_by_main_dist_2(main_cluster, clusters, get_index = False):
+    
+    if clusters.shape[0] > 2:
+        # Calculate distances using numpy broadcasting
+        distances = np.linalg.norm(clusters - main_cluster, axis=1)
+        # Sort clusters based on distances
+        sorted_indices = np.argsort(distances)
+        sorted_clusters = clusters[sorted_indices]
+
+        if get_index:
+            return sorted_clusters, sorted_indices
+        else:
+            return sorted_clusters
+        
+@njit(fastmath=True, parallel=True)
+def lg_norm(a):
+    norms = np.empty(a.shape[1], dtype=a.dtype)
+    for i in numba.prange(a.shape[1]):
+        norms[i] = np.sqrt(a[0, i] * a[0, i] + a[1, i] * a[1, i])
+    return norms
+
+@njit(fastmath=True)
+def log_polar_transform_2(main_point, secondary_point, axis_ref):
+    r = np.log( lg_norm( np.reshape(main_point - secondary_point, (2,1)))[0] ) 
+    theta = ( np.arctan2(secondary_point[1],secondary_point[0]) - np.arctan2(axis_ref[1],axis_ref[0]) + 2 * np.pi) % (2 * np.pi)
+    return np.float32(r), np.float32(theta) 
+
+@njit
+def get_star_features_fast(star_list, ref_pixel_to_deg = 1, reference_FOV = 1, recording_FOV = 1):
+
+    star_features_1 = np.empty((1,),  dtype=np.float64)
+    star_features_2 = np.empty((1,),  dtype=np.float64)
+    pixel_to_deg = ref_pixel_to_deg * recording_FOV/reference_FOV
+    star_list = star_list * pixel_to_deg
+
+#  Center the star list in the mean position (avoid traslation problems)
+    # star_list = star_list - np.mean(star_list, axis=0) #TODO: CHECK
+    star_list = star_list - star_list[0]
+
+    for j in range(star_list.shape[0]):
+        if j != 0:
+            # Log polar transform
+            star_features_1 = np.append(star_features_1,log_polar_transform_2(star_list[0],star_list[j], star_list[1]))
+        # Compute distance between each neirbour star (permutation)
+        for k in range(j+1,len(star_list)):
+            dist =  lg_norm(np.reshape(star_list[k] - star_list[j], (2,1)) ) 
+            star_features_2 = np.append(star_features_2, dist)
+
+    # Delete first element
+    star_features_1 = np.delete(star_features_1, 0)
+    star_features_2 = np.delete(star_features_2, 0)
+
+    return star_features_1, star_features_2
+
+@njit(fastmath=True, parallel=True)
+def euclidean_norm(a):
+    norms = np.empty(a.shape[0:2], dtype=a.dtype)
+    for i in numba.prange(a.shape[0]):
+        for j in numba.prange(a.shape[1]):
+            norms[i,j] = np.sqrt(np.dot(a[i,j], a[i,j]))
+    return norms
+
+@njit(fastmath=True, parallel=True)
+def compute_winner(features, weights): 
+    activation_map = euclidean_norm(np.subtract(features, weights))
+    return activation_map.argmin(), activation_map
+
+
+def predict_star_id_2(features, norm_param, dictionary, som):
+
+    normalized_feature = (features - norm_param[0]) / (norm_param[1] - norm_param[0])
+
+    winner_r, activation_map = compute_winner(normalized_feature, som.get_weights())
+    winner = np.unravel_index(winner_r, som.get_weights().shape[0:2])
+    if winner in dictionary:
+        return dictionary[winner], activation_map[winner]
+    else:
+        return [0], 10 #The neuron has no star ID return [0], the ID starts at 1 
+    
