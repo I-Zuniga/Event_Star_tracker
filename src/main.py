@@ -125,7 +125,7 @@ def run_star_tracker(args):
     event_frame_gen = PeriodicFrameGenerationAlgorithm(width, height, accumulation_time_us=args.accumulation_time_us)
 
     # Init Cluster Frame and Video
-    innit_fame = np.zeros((height, width,1), dtype=np.uint8)
+    innit_fame = np.zeros((1,height, width), dtype=np.uint8)
     cluster_frame = ClusterFrame(
         innit_fame,
         pixel_to_deg = args.pixel_to_deg,
@@ -139,14 +139,19 @@ def run_star_tracker(args):
     cluster_video = ClusterVideo()
     global frames
     frames = np.empty((0, height, width), dtype=np.uint8) 
+    # frames = np.random.randint(0, 256, size=(1, height, width), dtype=np.uint8)
+    # Create a random frame to initialize the frames variable with np.random.randint
+
+    
 
     def on_cd_frame_cb(ts, cd_frame):
         global frames  # Add this line to access the global frames variable
         gray_frame = np.reshape(cv2.cvtColor(cd_frame, cv2.COLOR_BGR2GRAY), (1, height, width))
         frames = np.append(frames,gray_frame, axis=0)  # Append the gray_frame as a new row to the frames array
         
-
     event_frame_gen.set_output_callback(on_cd_frame_cb)
+
+    cluster_frame.init_compilation()
 
     print('Initialisation time: ', time.time() - start_time)
 
@@ -168,13 +173,12 @@ def run_star_tracker(args):
             #--------------------#
             # Compuatation calls #
             #--------------------#
-            compact_frame = blend_buffer(frames, mirror=True)
 
-            cluster_frame.update_clusters(compact_frame)
+            cluster_frame.update_clusters(frames)
 
             if args.compute_ids:
 
-                cluster_frame.compute_ids_predictions()
+                cluster_frame.compute_ids_predictions_2()
 
                 cluster_frame.verify_predictions()
 
@@ -192,7 +196,7 @@ def run_star_tracker(args):
             if args.verbose: 
                 print('-'*50)
                 print('New max buffer: ', buffer_time - start_time)
-                cluster_frame.info(show_time = args.show_time)
+                # cluster_frame.info(show_time = args.show_time)
 
             if args.show_video:
                 close_callbcak = cluster_video.update_frame(cluster_frame.plot_cluster_cv(show_confirmed_ids=True))
@@ -215,10 +219,10 @@ def main():
     terminate_event = multiprocessing.Event()
     
     star_tracker_process = multiprocessing.Process(target=run_star_tracker, args=(args,))
-    data_process = multiprocessing.Process(target=data_timer, args=(args, 1.0, terminate_event))
+    # data_process = multiprocessing.Process(target=data_timer, args=(args, 1.0, terminate_event))
 
     star_tracker_process.start()
-    data_process.start()
+    # data_process.start()
 
     # Wait for the star_tracker_process to terminate
     star_tracker_process.join()
@@ -227,7 +231,7 @@ def main():
     terminate_event.set()
 
     # Wait for the data_process to terminate
-    data_process.join()
+    # data_process.join()
 
 
 if __name__ == "__main__":

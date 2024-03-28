@@ -29,7 +29,7 @@ class ClusterVideo:
     
 class ClusterFrame: 
     def __init__(self, frame, pixel_to_deg, index_clustering = True, mass_treshold = None, treshold_filter = 0.2, pixel_range = 15, max_number_of_clusters = 30):
-        self.frame = np.squeeze(frame)
+        self.frame = frame
 
         # Parameters & options for filtering
         self.treshold = treshold_filter # Percetange of max value 
@@ -63,10 +63,30 @@ class ClusterFrame:
             'compute_frame_position': [0, 0]
             }
         
+        self.first_loop = True
         self.update_count = 0
+        
+    def init_compilation(self):
+        
+        self.frame = blend_buffer(self.frame, mirror=True)
+        self.compute_clusters_2()
+
+        self.clusters_list = np.random.randint(0, 100, size=(10, 2), dtype=np.uint32) 
+        self.compute_ids_predictions_2()
+        print('Predictions: ', self.predcited_stars)
+        self.verify_predictions()
+        # self.compute_frame_position()
+
+        # # Reset the time dict to not include compilation time
+        # self.time_dict ={ 
+        #     'compute_clusters': 0,
+        #     'compute_ids_predictions': 0,
+        #     'verify_predictions': 0, 
+        #     'compute_frame_position': 0
+        #     }
+        
 
 
-    
     def compute_clusters(self):
 
         start_time = time.perf_counter()
@@ -112,11 +132,11 @@ class ClusterFrame:
         print('Time order: ', time_order)
 
     
-    def update_clusters(self, frame):
+    def update_clusters(self, frames):
         time_start = time.time()
 
-        self.frame = frame
-        self.compute_clusters()
+        self.frame = blend_buffer(frames, mirror=True)
+        self.compute_clusters_2()
 
         self.time_dict['compute_clusters'] = time.time() - time_start
         self.update_count += 1
@@ -401,32 +421,36 @@ class ClusterFrame:
     def verify_predictions(self):
         time_start = time.time()
 
-        indices_neigh_gt  = np.full((len(self.predcited_stars),self.num_of_neirbours+1 ), None)
-        for i, predicted_star in enumerate(self.predcited_stars):
-            if predicted_star[0] is not None:
-                indices_neigh_gt[i]  = self.indices_dt[predicted_star[0]]
+        if self.predcited_stars is not None:
+            indices_neigh_gt  = np.full((len(self.predcited_stars),self.num_of_neirbours+1 ), None)
+            for i, predicted_star in enumerate(self.predcited_stars):
+                if predicted_star[0] is not None:
+                    indices_neigh_gt[i]  = self.indices_dt[predicted_star[0]]
 
-        indices_neigh_image = np.array([np.array(self.predcited_stars, dtype=object)[:,0][index] for index in self.indices_image], dtype=object)
+            indices_neigh_image = np.array([np.array(self.predcited_stars, dtype=object)[:,0][index] for index in self.indices_image], dtype=object)
 
-        self.confirmed_stars_ids, self.original_confirmed_ids = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
-                                                    np.array(indices_neigh_image, dtype=object),
-                                                    np.array(self.indices_image, dtype=object),
-                                                    True)
+            self.confirmed_stars_ids, self.original_confirmed_ids = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
+                                                        np.array(indices_neigh_image, dtype=object),
+                                                        np.array(self.indices_image, dtype=object),
+                                                        True)
 
-        #repeat: TODO: OPTIMICE 
-        # self.confirmed_stars_ids.tolist()
-        # indices_neigh_gt  = np.full((len(self.confirmed_stars_ids),self.num_of_neirbours+1 ), None)
-        # for i, predicted_star in enumerate(self.confirmed_stars_ids):
-        #     if predicted_star is not None:
-        #         indices_neigh_gt[i]  = self.indices_dt[predicted_star]
+            #repeat: TODO: OPTIMICE 
+            # self.confirmed_stars_ids.tolist()
+            # indices_neigh_gt  = np.full((len(self.confirmed_stars_ids),self.num_of_neirbours+1 ), None)
+            # for i, predicted_star in enumerate(self.confirmed_stars_ids):
+            #     if predicted_star is not None:
+            #         indices_neigh_gt[i]  = self.indices_dt[predicted_star]
 
-        # self.confirmed_stars_ids, _ = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
-        #                                             np.array(indices_neigh_image, dtype=object),
-        #                                             np.array(self.indices_image, dtype=object),
-        #                                             True)
+            # self.confirmed_stars_ids, _ = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
+            #                                             np.array(indices_neigh_image, dtype=object),
+            #                                             np.array(self.indices_image, dtype=object),
+            #                                             True)
 
-        self.confirmed_indices = [i for i, star_id in enumerate(self.confirmed_stars_ids) if star_id is not None]
-
+            self.confirmed_indices = [i for i, star_id in enumerate(self.confirmed_stars_ids) if star_id is not None]
+        else: 
+            print('Error: No predicted stars to verify')
+            self.confirmed_stars_ids = [None]
+            self.confirmed_indices = [None]
         self.time_dict['verify_predictions'] = time.time() - time_start
 
     def compute_frame_position(self):
@@ -486,18 +510,21 @@ class ClusterFrame:
 
 
     def update_total_time(self):
-        if self.confirmed_indices and len(self.confirmed_indices) != 0 :
-            self.total_time_dict['compute_clusters'][0] += self.time_dict['compute_clusters']
-            self.total_time_dict['compute_clusters'][1] += self.time_dict['compute_clusters']/len(self.predcited_stars)
-            self.total_time_dict['compute_ids_predictions'][0] += self.time_dict['compute_ids_predictions']
-            self.total_time_dict['compute_ids_predictions'][1] += self.time_dict['compute_ids_predictions']/len(self.predcited_stars)
-            self.total_time_dict['verify_predictions'][0] += self.time_dict['verify_predictions']
-            self.total_time_dict['verify_predictions'][1] += self.time_dict['verify_predictions']/len(self.predcited_stars)
-            self.total_time_dict['compute_frame_position'][0] += self.time_dict['compute_frame_position']
-            self.total_time_dict['compute_frame_position'][1] += self.time_dict['compute_frame_position']/len(self.confirmed_indices)
+        if self.first_loop:
+            self.first_loop = False # First loop is not counted (numba compilation)
         else:
-            print('Error: No confirmed indices')
-            self.update_count -= 1
+            if self.confirmed_indices and len(self.confirmed_indices) != 0 :
+                self.total_time_dict['compute_clusters'][0] += self.time_dict['compute_clusters']
+                self.total_time_dict['compute_clusters'][1] += self.time_dict['compute_clusters']/self.clusters_list.shape[0]
+                self.total_time_dict['compute_ids_predictions'][0] += self.time_dict['compute_ids_predictions']
+                self.total_time_dict['compute_ids_predictions'][1] += self.time_dict['compute_ids_predictions']/self.clusters_list.shape[0]
+                self.total_time_dict['verify_predictions'][0] += self.time_dict['verify_predictions']
+                self.total_time_dict['verify_predictions'][1] += self.time_dict['verify_predictions']/self.clusters_list.shape[0]
+                self.total_time_dict['compute_frame_position'][0] += self.time_dict['compute_frame_position']
+                self.total_time_dict['compute_frame_position'][1] += self.time_dict['compute_frame_position']/len(self.confirmed_indices)
+            else:
+                print('Error: No confirmed indices')
+                self.update_count -= 1
 
     def print_total_time(self):
         
