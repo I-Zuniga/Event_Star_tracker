@@ -6,7 +6,7 @@ import numba
 from numba import jit, njit
 from scipy.optimize import minimize
 
-@njit
+@njit(parallel=True)
 def blend_buffer(frames_buffer, mirror = False):
     ''' Get a frame buffer and compacts it into a single frame '''
     stacked_frames = np.zeros(frames_buffer[0].shape, dtype=np.uint16) 
@@ -371,7 +371,7 @@ def get_star_features_2(star_list,feature_type, ref_pixel_to_deg = 1, reference_
         List of stars. Each star is a list with the following structure:
             [main_star[x_pixel, y_pixel], first_neirbour_star[x_pixel, y_pixel], second_neirbour_star[x_pixel, y_pixel], ...]
     feature_type : str
-        Type of feature to be computed. Options: 'log_polar', 'permutation', 'permuatation_suffled', 'permutation_log', 'permutation_log_polar', 'permutation_angle', 'permutation_multi'
+        Type of feature to be computed. Options: 'log_polar', 'permutation', 'permuatation_suffled', 'permutation_log', 'permutation_log_polar', 'permutation_angle', 'permutation_angle_dist'
 
     '''  
     star_features_1 = []
@@ -427,7 +427,7 @@ def get_star_features_2(star_list,feature_type, ref_pixel_to_deg = 1, reference_
             for k in range(j+1,len(star_list)):
                 star_features_1.append( get_angle(star_list[j],star_list[k]))
 
-    elif feature_type == 'permutation_multi':
+    elif feature_type == 'permutation_angle_dist':
 
         for j in range(len(star_list)):
             for k in range(j+1,len(star_list)):
