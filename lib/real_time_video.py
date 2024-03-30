@@ -8,7 +8,6 @@ import minisom
 import time
 import os
 
-from utils import *
 from lib.utils import *
 from lib.plot_utils import *   
 from lib.event_processing import *
@@ -65,7 +64,7 @@ class ClusterFrame:
         
         self.first_loop = True
         self.update_count = 0
-        
+
     def init_compilation(self):
         
         self.frame = blend_buffer(self.frame, mirror=True)
@@ -73,7 +72,6 @@ class ClusterFrame:
 
         self.clusters_list = np.random.randint(0, 100, size=(10, 2), dtype=np.uint32) 
         self.compute_ids_predictions_2()
-        print('Predictions: ', self.predcited_stars)
         self.verify_predictions()
         # self.compute_frame_position()
 
