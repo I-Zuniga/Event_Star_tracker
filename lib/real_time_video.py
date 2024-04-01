@@ -613,14 +613,7 @@ class ClusterFrame:
 
     def compute_ids_predictions_2(self):
         time_start = time.time()
-
-        time_sort = 0 #delete
-        time_features = 0 #delete
-        time_predict = 0 #delete
-        logic_time = 0 #delete
-        intersection_time = 0 #delete
         
-
         if self.clusters_list.shape[0] > 5:
             self.indices_image = np.empty((self.clusters_list.shape[0],5), dtype=np.uint8)
             self.predcited_stars = np.empty((self.clusters_list.shape[0],2), dtype=np.uint32)
@@ -628,43 +621,34 @@ class ClusterFrame:
             for i, main_star in enumerate(self.clusters_list):
 
                 #Order by distance to the main star at the loop
-                start_time = time.perf_counter() #delete
                 self.stars_sorted_by_main, index_sort = order_by_main_dist_2(main_star, self.clusters_list, True)
                 self.indices_image[i,:] = index_sort[0:self.num_of_neirbours+1]
-                time_sort += time.perf_counter() - start_time #delete
 
-                feature_type_1 = 'permutation_multi'
+                feature_type_1 = 'permutation_angle_dist'
                 feature_type_2 = 'permutation'
                     
-                # stars_features_1 = get_star_features_2(
-                #     self.stars_sorted_by_main[0:self.num_of_neirbours+1],
-                #     feature_type_1,
-                #     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
-                # )
-                # stars_features_2 = get_star_features_2(
-                #     self.stars_sorted_by_main[0:self.num_of_neirbours+1],
-                #     feature_type_2,
-                #     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
-                # )
+                stars_features_1 = get_star_features_2(
+                    self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                    feature_type_1,
+                    self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
+                )
+                stars_features_2 = get_star_features_2(
+                    self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                    feature_type_2,
+                    self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
+                )
                 
                 # Old version
-                start_time = time.perf_counter() #delete
-                stars_features_1, stars_features_2 = get_star_features_fast(self.stars_sorted_by_main[0:self.num_of_neirbours+1],
-                                                    self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV)
-                time_features += time.perf_counter() - start_time #delete
+                # stars_features_1, stars_features_2 = get_star_features_fast(self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                #                                     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV)
 
                 # Get prediction index
-                start_time = time.perf_counter() #delete
                 predicted_star_ids_1, act_1 = predict_star_id_2(stars_features_1, self.norm_param[0:2], self.star_dict_1, self.som1)
                 predicted_star_ids_2, act_2 = predict_star_id_2(stars_features_2, self.norm_param[2:4], self.star_dict_2, self.som2)
-                time_predict += time.perf_counter() - start_time #delete
 
-                start_time = time.perf_counter() #delete
                 star_guess = self.get_star_guess(predicted_star_ids_1, predicted_star_ids_2, act_1, act_2)
-                logic_time += time.perf_counter() - start_time
 
                 # Get the intersection of the two predictions if there is only one star in common
-                start_time = time.perf_counter()
                 if len(star_guess) == 1:
                     star_guess_index = star_guess[0]
                     star_guess_id = self.stars_data[star_guess_index].astype(int)[0]
@@ -673,18 +657,11 @@ class ClusterFrame:
                     star_guess_id = 0
 
                 self.predcited_stars[i] = (star_guess_index, star_guess_id)
-                intersection_time += time.perf_counter() - start_time
 
             self.time_dict['compute_ids_predictions'] = time.time() - time_start
         else: 
             print('Error: Not enough clusters to compute predictions')
             self.predcited_stars = None
-
-        print('Time sort: ', time_sort)
-        print('Time features: ', time_features) 
-        print('Time predict: ', time_predict)
-        print('Time logic: ', logic_time)
-        print('Time intersection: ', intersection_time)
 
     def get_star_guess(self, predicted_star_ids_1, predicted_star_ids_2, activation_som1, activation_som2):
 
