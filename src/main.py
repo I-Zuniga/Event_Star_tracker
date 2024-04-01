@@ -203,6 +203,8 @@ def run_star_tracker(args):
                 if close_callbcak:
                     cv2.destroyAllWindows()
                     break
+                #wait 1 second
+                cv2.waitKey(1)
             
             frames = np.empty((0, height, width), dtype=np.uint8) 
             # frames.clear()
