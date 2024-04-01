@@ -6,7 +6,7 @@ import numba
 from numba import jit, njit
 from scipy.optimize import minimize
 
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def blend_buffer(frames_buffer, mirror = False):
     ''' Get a frame buffer and compacts it into a single frame '''
     stacked_frames = np.zeros(frames_buffer[0].shape, dtype=np.uint16) 
