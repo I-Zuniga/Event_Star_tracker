@@ -140,9 +140,6 @@ def run_star_tracker(args):
     global frames
     frames = np.empty((0, height, width), dtype=np.uint8) 
     # frames = np.random.randint(0, 256, size=(1, height, width), dtype=np.uint8)
-    # Create a random frame to initialize the frames variable with np.random.randint
-
-    
 
     def on_cd_frame_cb(ts, cd_frame):
         global frames  # Add this line to access the global frames variable
@@ -160,8 +157,6 @@ def run_star_tracker(args):
         event_frame_gen.process_events(evs)
         # TODO: Cambiar buffer a tiempo.
         # Options:
-        # best effort 
-        # garantize data each second 
         # resaerch benchamarck in LIS and recursive
 
         # PowerConsumption 
@@ -203,8 +198,6 @@ def run_star_tracker(args):
                 if close_callbcak:
                     cv2.destroyAllWindows()
                     break
-                #wait 1 second
-                cv2.waitKey(1)
             
             frames = np.empty((0, height, width), dtype=np.uint8) 
             # frames.clear()

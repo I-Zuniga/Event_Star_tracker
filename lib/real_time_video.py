@@ -16,15 +16,35 @@ class ClusterVideo:
     def __init__(self, wait_time = 100, size = None):
         self.size = size
         self.wait_time = wait_time
-
         self.new_frame = False
 
     def update_frame(self, frame):
+        '''Update the frame and show it in a window. Return True if the exit key is pressed.
+            keys: 
+                q: exit
+                space: pause
+        '''
         self.frame = frame
         cv2.imshow('frame', self.frame)
-        if cv2.waitKey(self.wait_time) == ord('q'):
+
+        key = cv2.waitKey(self.wait_time)
+        if key == ord('q'):
             print('Exit key pressed')
             return True
+        
+        # Pause if space is pressed
+        elif key == ord(' '):
+            while True:
+                key = cv2.waitKey(0)
+                if key == ord(' '):
+                    break
+                elif key == ord('q'): # Allow exit while paused
+                    print('Exit key pressed')
+                    return True
+        
+    
+
+
     
 class ClusterFrame: 
     def __init__(self, frame, pixel_to_deg, index_clustering = True, mass_treshold = None, treshold_filter = 0.2, pixel_range = 15, max_number_of_clusters = 30):
@@ -292,6 +312,10 @@ class ClusterFrame:
                 for i, cluster in enumerate(clusters):
                     cv2.putText(img_rgb, str(i+1), (cluster[1] - cluster_size, cluster[0] - cluster_size - 5),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        
+        if self.frame_position is not None:
+            cv2.putText(img_rgb, 'Frame position: ' + str(self.frame_position), (10, 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
         # # # Resize image
         if size is not None:
