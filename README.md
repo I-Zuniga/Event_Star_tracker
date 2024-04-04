@@ -16,6 +16,8 @@ screen -ls : Avalible Screen list
 screen -r ID_SCREEN/NAME : Access screen 
 screen -d ID_SCREEN/NAME : Close screen whereever it is 
 
+xset dpms force off : Turn off screen 
+
 key shorcuts: 
     crtl + a + d : exit 
     crtl + a + 
