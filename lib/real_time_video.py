@@ -1,3 +1,4 @@
+from operator import is_
 import re
 from metavision_core.event_io import EventsIterator
 import numpy as np
@@ -65,7 +66,7 @@ class ClusterFrame:
 
         # self.clusters_list_full = [] # List of clusters: [ [x_pixel, y_pixel], cluster comulative mass]
         # self.clusters_list = []  # List of clusters: [ [x_pixel, y_pixel] ]
-        self.predcited_stars = None
+        self.predicted_stars = None
         self.confirmed_stars_ids = None
 
         self.time_dict ={ 
@@ -369,7 +370,7 @@ class ClusterFrame:
 
         if len(self.clusters_list) > 5:
             self.indices_image = []
-            self.predcited_stars = []
+            self.predicted_stars = []
 
             for main_star in self.clusters_list:
 
@@ -433,23 +434,23 @@ class ClusterFrame:
                 else:
                     star_guess_index = None
                     star_guess_id = None
-                self.predcited_stars.append([star_guess_index, star_guess_id])
+                self.predicted_stars.append([star_guess_index, star_guess_id])
 
             self.time_dict['compute_ids_predictions'] = time.time() - time_start
         else: 
             print('Error: Not enough clusters to compute predictions')
-            self.predcited_stars = None
+            self.predicted_stars = None
 
     def verify_predictions(self):
         time_start = time.time()
 
-        if self.predcited_stars is not None:
-            indices_neigh_gt  = np.full((len(self.predcited_stars),self.num_of_neirbours+1 ), None)
-            for i, predicted_star in enumerate(self.predcited_stars):
+        if self.predicted_stars is not None:
+            indices_neigh_gt  = np.full((len(self.predicted_stars),self.num_of_neirbours+1 ), None)
+            for i, predicted_star in enumerate(self.predicted_stars):
                 if predicted_star[0] is not None:
                     indices_neigh_gt[i]  = self.indices_dt[predicted_star[0]]
 
-            indices_neigh_image = np.array([np.array(self.predcited_stars, dtype=object)[:,0][index] for index in self.indices_image], dtype=object)
+            indices_neigh_image = np.array([np.array(self.predicted_stars, dtype=object)[:,0][index] for index in self.indices_image], dtype=object)
 
             self.confirmed_stars_ids, self.original_confirmed_ids = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
                                                         np.array(indices_neigh_image, dtype=object),
@@ -496,9 +497,9 @@ class ClusterFrame:
 
         print('Stars detected: ', len(self.clusters_list) )
         
-        if self.predcited_stars:
+        if self.predicted_stars is not None:
             discarted_stars = 0
-            predicted_ids = [x[0] for x in self.predcited_stars]
+            predicted_ids = [x[0] for x in self.predicted_stars]
             for star in predicted_ids:
                 if star is not None:
                     if star not in self.confirmed_stars_ids:     
@@ -514,10 +515,10 @@ class ClusterFrame:
 
             if show_time:
                 print('Time: (total, average) ')
-                if len(self.predcited_stars) != 0:
-                    print(f'     compute_clusters       : {self.time_dict["compute_clusters"]}, {self.time_dict["compute_clusters"]/len(self.predcited_stars)}')
-                    print(f'     compute_ids_predictions: {self.time_dict["compute_ids_predictions"]}, {self.time_dict["compute_ids_predictions"]/len(self.predcited_stars)}')
-                    print(f'     verify_predictions     : {self.time_dict["verify_predictions"]}, {self.time_dict["verify_predictions"]/len(self.predcited_stars)}')
+                if len(self.predicted_stars) != 0:
+                    print(f'     compute_clusters       : {self.time_dict["compute_clusters"]}, {self.time_dict["compute_clusters"]/len(self.predicted_stars)}')
+                    print(f'     compute_ids_predictions: {self.time_dict["compute_ids_predictions"]}, {self.time_dict["compute_ids_predictions"]/len(self.predicted_stars)}')
+                    print(f'     verify_predictions     : {self.time_dict["verify_predictions"]}, {self.time_dict["verify_predictions"]/len(self.predicted_stars)}')
                 else: 
                     print(f'     compute_clusters       : Error, No predicted stars')
                     print(f'     compute_ids_predictions: Error, No predicted stars')
@@ -637,10 +638,13 @@ class ClusterFrame:
 
     def compute_ids_predictions_2(self):
         time_start = time.time()
+
+        feature_type_1 = 'permutation_angle_dist'
+        feature_type_2 = 'permutation'
         
         if self.clusters_list.shape[0] > 5:
             self.indices_image = np.empty((self.clusters_list.shape[0],5), dtype=np.uint8)
-            self.predcited_stars = np.empty((self.clusters_list.shape[0],2), dtype=np.uint32)
+            self.predicted_stars = np.empty((self.clusters_list.shape[0],2), dtype=np.uint32)
 
             for i, main_star in enumerate(self.clusters_list):
 
@@ -648,44 +652,45 @@ class ClusterFrame:
                 self.stars_sorted_by_main, index_sort = order_by_main_dist_2(main_star, self.clusters_list, True)
                 self.indices_image[i,:] = index_sort[0:self.num_of_neirbours+1]
 
-                feature_type_1 = 'permutation_angle_dist'
-                feature_type_2 = 'permutation'
+                if not_close_to_border(main_star, self.frame.shape, 30):                        
+                    stars_features_1 = get_star_features_2(
+                        self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                        feature_type_1,
+                        self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
+                    )
+                    stars_features_2 = get_star_features_2(
+                        self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                        feature_type_2,
+                        self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
+                    )
                     
-                stars_features_1 = get_star_features_2(
-                    self.stars_sorted_by_main[0:self.num_of_neirbours+1],
-                    feature_type_1,
-                    self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
-                )
-                stars_features_2 = get_star_features_2(
-                    self.stars_sorted_by_main[0:self.num_of_neirbours+1],
-                    feature_type_2,
-                    self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV
-                )
-                
-                # Old version
-                # stars_features_1, stars_features_2 = get_star_features_fast(self.stars_sorted_by_main[0:self.num_of_neirbours+1],
-                #                                     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV)
+                    # Old version
+                    # stars_features_1, stars_features_2 = get_star_features_fast(self.stars_sorted_by_main[0:self.num_of_neirbours+1],
+                    #                                     self.ref_pixel_to_deg, self.reference_FOV, self.recording_FOV)
 
-                # Get prediction index
-                predicted_star_ids_1, act_1 = predict_star_id_2(stars_features_1, self.norm_param[0:2], self.star_dict_1, self.som1)
-                predicted_star_ids_2, act_2 = predict_star_id_2(stars_features_2, self.norm_param[2:4], self.star_dict_2, self.som2)
+                    # Get prediction index
+                    predicted_star_ids_1, act_1 = predict_star_id_2(stars_features_1, self.norm_param[0:2], self.star_dict_1, self.som1)
+                    predicted_star_ids_2, act_2 = predict_star_id_2(stars_features_2, self.norm_param[2:4], self.star_dict_2, self.som2)
 
-                star_guess = self.get_star_guess(predicted_star_ids_1, predicted_star_ids_2, act_1, act_2)
+                    star_guess = self.get_star_guess(predicted_star_ids_1, predicted_star_ids_2, act_1, act_2)
 
-                # Get the intersection of the two predictions if there is only one star in common
-                if len(star_guess) == 1:
-                    star_guess_index = star_guess[0]
-                    star_guess_id = self.stars_data[star_guess_index].astype(int)[0]
-                else:
-                    star_guess_index = 0
-                    star_guess_id = 0
+                    # Get the intersection of the two predictions if there is only one star in common
+                    if len(star_guess) == 1:
+                        star_guess_index = star_guess[0]
+                        star_guess_id = self.stars_data[star_guess_index].astype(int)[0]
+                    else:
+                        star_guess_index = 0
+                        star_guess_id = 0
 
-                self.predcited_stars[i] = (star_guess_index, star_guess_id)
+                    self.predicted_stars[i] = (star_guess_index, star_guess_id)
+
+                else: # If the star is close to the border, discard it
+                    self.predicted_stars[i] = (0, 0)
 
             self.time_dict['compute_ids_predictions'] = time.time() - time_start
         else: 
             print('Error: Not enough clusters to compute predictions')
-            self.predcited_stars = None
+            self.predicted_stars = None
 
     def get_star_guess(self, predicted_star_ids_1, predicted_star_ids_2, activation_som1, activation_som2):
 

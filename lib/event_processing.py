@@ -1,3 +1,4 @@
+import logging
 from metavision_core.event_io import EventsIterator
 import numpy as np
 import matplotlib.pyplot as plt
@@ -432,8 +433,9 @@ def get_star_features_2(star_list,feature_type, ref_pixel_to_deg = 1, reference_
         for j in range(len(star_list)):
             for k in range(j+1,len(star_list)):
                 star_features_1.append( np.linalg.norm(star_list[k] - star_list[j]) * get_angle(star_list[j],star_list[k]))
-
-
+    else:
+        logging.error('Feature type not found')
+        return None
 
     star_features_1 = np.array(star_features_1) 
 
@@ -614,12 +616,12 @@ def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_imag
         if indices_neigh_gt[i][0] is not None:
             for j in range(1,len(indices_neigh_image[i])): # For all the neighbours of the cluster [1,5]
                 if indices_neigh_image[i][j] == indices_neigh_gt[i][j]: # If neighbours MATCH +1 for the star and the neighbour 
-                    check_points[i] += 2
-                    check_points[indices_image[i][j]] += 2
-                elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
-                    check_points[i] -= 1
-                    check_points[indices_image[i][j]] -= 1
-                    break
+                    check_points[i] += 1
+                    check_points[indices_image[i][j]] += 1
+                # elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
+                #     check_points[i] -= 1
+                #     check_points[indices_image[i][j]] -= 1
+                    
 
     confirmed_indices = [i for i in range(len(check_points)) if check_points[i] > 0] # Index of original list of confrimed stars
     confirmed_stars_ids = np.full(len(indices_neigh_gt), None)
@@ -849,4 +851,7 @@ def predict_star_id_2(features, norm_param, dictionary, som):
         return dictionary[winner], activation_map[winner]
     else:
         return [0], 10 #The neuron has no star ID return [0], the ID starts at 1 
-    
+
+def not_close_to_border(cluster_position, image_shape, min_distance):
+    min_distance_to_border = np.min((cluster_position,image_shape-cluster_position))
+    return min_distance_to_border >= min_distance
