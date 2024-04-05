@@ -86,11 +86,11 @@ def parse_args():
 
 def data_timer( args, send_time, terminate_event):
     '''Send data every "time" seconds.'''
-    start_time = time.time()
-    loop_time = time.time()
+    start_time = time.perf_counter()
+    loop_time = time.perf_counter()
 
     while not terminate_event.is_set():
-        current_time= time.time()
+        current_time= time.perf_counter()
         if current_time - loop_time >= send_time:
             if not data_queue.empty():
                 if args.save_stars:
@@ -99,7 +99,7 @@ def data_timer( args, send_time, terminate_event):
                     #     save_stars_queue.get(),
                     #     training_name = args.train_folder, 
                     #     recording_path=args.input_path, 
-                    #     time = time.time() - start_time)
+                    #     time = time.perf_counter() - start_time)
                     print('save_stars Not implemented yet.')
                     
                 if args.save_attitude:
@@ -107,15 +107,15 @@ def data_timer( args, send_time, terminate_event):
                         data_queue.get(),
                         training_name = args.train_folder, 
                         recording_path=args.input_path, 
-                        time = time.time() - start_time
+                        time = time.perf_counter() - start_time
                         )
                     print('saving position', data_queue.get())
-            loop_time = time.time() # Reset the timer
+            loop_time = time.perf_counter() # Reset the timer
 
 def run_star_tracker(args):
     """ Main """
 
-    start_time = time.time()    
+    start_time = time.perf_counter()    
 
     # Events iterator on Camera or RAW file
     mv_iterator = EventsIterator(input_path=args.input_path, delta_t=args.delta_t)
@@ -150,7 +150,8 @@ def run_star_tracker(args):
 
     cluster_frame.init_compilation()
 
-    print('Initialisation time: ', time.time() - start_time)
+    print('Initialisation time: ', time.perf_counter() - start_time)
+    all_time = 0.0
 
     for evs in mv_iterator:
 
@@ -163,7 +164,7 @@ def run_star_tracker(args):
 
         if len(frames) == args.buffer_size:
 
-            buffer_time = time.time()
+            buffer_time = time.perf_counter()
 
             #--------------------#
             # Compuatation calls #
@@ -191,7 +192,9 @@ def run_star_tracker(args):
             if args.verbose: 
                 print('-'*50)
                 print('New max buffer: ', buffer_time - start_time)
-                # cluster_frame.info(show_time = args.show_time)
+                print(f'Accomulation time: {buffer_time-all_time}')
+
+                cluster_frame.info(show_time = args.show_time)
 
             if args.show_video:
                 close_callbcak = cluster_video.update_frame(cluster_frame.plot_cluster_cv(show_confirmed_ids=True))
@@ -200,7 +203,7 @@ def run_star_tracker(args):
                     break
             
             frames = np.empty((0, height, width), dtype=np.uint8) 
-            # frames.clear()
+            all_time = time.perf_counter()
 
     cluster_frame.print_total_time()
 
