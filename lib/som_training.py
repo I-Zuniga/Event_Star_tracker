@@ -36,6 +36,15 @@ def normalize_features(star_features):
     star_features_normalized = (star_features - star_features.min(axis=0)) / (star_features.max(axis=0) - star_features.min(axis=0))
     return star_features_normalized
 
+def generate_pixel_noise(stars_data_shape, n_pixels, fov = 15, img_width = 1280):
+    pixel_to_deg_ideal = fov/img_width
+    pixel_noise = np.zeros((stars_data_shape[0],2))
+    random_angles = np.random.rand(stars_data_shape[0]) * 2 * np.pi
+    pixel_noise[:,0:2] = (pixel_to_deg_ideal * n_pixels) * np.array([np.cos(random_angles), np.sin(random_angles)]).T
+    print("Pixels: ", pixel_to_deg_ideal * n_pixels)
+
+    return pixel_noise
+
 # Another dict for map neurons to star (just to check), same as star_ids but created from som.winner rather than som.winner_map
 def add_values_in_dict(sample_dict, key, list_of_values):
     ''' Append multiple values to a key in 
@@ -68,6 +77,9 @@ def train(hyperparameters_1, hyperparameters_2, trial):
     features_vec_1 = []
     features_vec_2 = []
 
+    feature_type_1 = hyperparameters_1['feature_type']
+    feature_type_2 = hyperparameters_2['feature_type']
+
     # Compute the distances in the x and y axes to each of the five closest stars for each star
     for i in range(len(stars_data)):
 
@@ -75,8 +87,7 @@ def train(hyperparameters_1, hyperparameters_2, trial):
         features_1 = []
         features_2 = []
 
-        feature_type_1 = 'permutation_multi'
-        feature_type_2 = 'permutation'
+
         
         features_1 = get_star_features_2(stars_data[indices[i][0:n_of_neighbor+1]][:,1:3], feature_type_1)
         features_2 = get_star_features_2(stars_data[indices[i][0:n_of_neighbor+1]][:,1:3], feature_type_2)
@@ -99,8 +110,8 @@ def train(hyperparameters_1, hyperparameters_2, trial):
 
     # Initialize the SOM
     som1 = MiniSom(
-        x = hyperparameters_1['mesh_size_1'],
-        y = hyperparameters_1['mesh_size_1'],
+        x = hyperparameters_1['mesh_size_x'],
+        y = hyperparameters_1['mesh_size_y'],
         input_len = features_1_n.shape[1],
 
         sigma=hyperparameters_1['sigma'],
@@ -112,8 +123,8 @@ def train(hyperparameters_1, hyperparameters_2, trial):
     )
 
     som2 = MiniSom(
-        x = hyperparameters_2['mesh_size_2'],
-        y = hyperparameters_2['mesh_size_2'],
+        x = hyperparameters_2['mesh_size_x'],
+        y = hyperparameters_2['mesh_size_y'],
         input_len = features_2_n.shape[1],
 
         sigma=hyperparameters_2['sigma'],
@@ -132,7 +143,7 @@ def train(hyperparameters_1, hyperparameters_2, trial):
         star_dict_1 = add_values_in_dict(star_dict_1, som1.winner(features_1_n[i]),[i])
 
     # trial.report(len(star_dict_1) / som1._xx.shape[0]*som1._xx.shape[1], 1)
-    if len(star_dict_1) / som1._xx.shape[0]*som1._xx.shape[1] < 0.1:
+    if len(star_dict_1) / som1._xx.shape[0]*som1._xx.shape[1] < 0.1 or som1.quantization_error(features_1_n) > 0.1:
         raise optuna.TrialPruned()
 
     som2.train_random(data=features_2_n, num_iteration=hyperparameters_2['epochs'])
@@ -142,7 +153,7 @@ def train(hyperparameters_1, hyperparameters_2, trial):
         star_dict_2 = add_values_in_dict(star_dict_2, som2.winner(features_2_n[i]),[i])
 
     # trial.report(len(star_dict_2) / som2._xx.shape[0]*som2._xx.shape[1], 1)
-    if len(star_dict_2) / som2._xx.shape[0]*som2._xx.shape[1] < 0.1:
+    if len(star_dict_2) / som2._xx.shape[0]*som2._xx.shape[1] < 0.1 or som2.quantization_error(features_2_n) > 0.1:
         raise optuna.TrialPruned()
 
 
