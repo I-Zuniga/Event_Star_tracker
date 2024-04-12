@@ -24,7 +24,7 @@ def main():
     height, width = mv_iterator.get_size()  # Camera Geometry
             
     # Event Frame Generator
-    event_frame_gen = PeriodicFrameGenerationAlgorithm(width, height, accumulation_time_us=15)
+    event_frame_gen = PeriodicFrameGenerationAlgorithm(width, height, accumulation_time_us=100000)
 
     # Window - Graphical User Interface
     with Window(title="Metavision SDK Get Started", width=width, height=height, mode=BaseWindow.RenderMode.BGR) as window:
