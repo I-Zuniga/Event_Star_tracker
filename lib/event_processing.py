@@ -433,6 +433,29 @@ def get_star_features_2(star_list,feature_type, ref_pixel_to_deg = 1, reference_
         for j in range(len(star_list)):
             for k in range(j+1,len(star_list)):
                 star_features_1.append( np.linalg.norm(star_list[k] - star_list[j]) * get_angle(star_list[j],star_list[k]))
+    
+    elif feature_type == 'permutation_angle_crt_dist':
+
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( np.linalg.norm(star_list[k] - star_list[j]) * (get_angle(star_list[j],star_list[k]))**0.25)
+    
+    elif feature_type == 'permutation_angle_sqrt_dist':
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( np.linalg.norm(star_list[k] - star_list[j]) * (get_angle(star_list[j],star_list[k]))**0.5)
+    
+    elif feature_type == 'permutation_angle_0_25_dist_sq':
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( np.linalg.norm(star_list[k] - star_list[j])**2 * (get_angle(star_list[j],star_list[k]))**0.25)
+    elif feature_type == 'permutation_angle_0_75_dist':
+        for j in range(len(star_list)):
+            for k in range(j+1,len(star_list)):
+                star_features_1.append( np.linalg.norm(star_list[k] - star_list[j]) * (get_angle(star_list[j],star_list[k]))**0.75)
+ 
+    
+    
     else:
         logging.error('Feature type not found')
         return None
