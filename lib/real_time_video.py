@@ -342,7 +342,7 @@ class ClusterFrame:
                 
 
         #Load normalization parameters
-        with open('../data/SOM_parameters/'+name+'/normalization_parameters_tycho' + str(name[-1]) + '.p', 'rb') as infile:
+        with open('../data/SOM_parameters/'+name+'/normalization_parameters_tycho6.p', 'rb') as infile:
             try: self.norm_param = pickle.load(infile)
             except EOFError:
                 print('Error: Normalization parameters not loaded')
@@ -492,6 +492,26 @@ class ClusterFrame:
             print('Error: Not enough stars to compute position')
 
         self.time_dict['compute_frame_position'] = time.time() - time_start
+
+
+    def compute_frame_position_2(self):
+
+        time_start = time.time()
+
+        if len(self.confirmed_indices) > 2:
+            img_center = np.array(self.frame.shape)/2
+
+            transformation_matrix = compute_transformation_matrix(self.clusters_list[self.confirmed_indices], 
+                                                                  self.stars_data[ self.confirmed_stars_ids[ self.confirmed_indices].tolist()][:,1:3])
+            self.frame_position = transform_point(img_center, transformation_matrix)
+        else:
+            self.frame_position = None
+            print('Error: Not enough stars to compute position')
+            self.frame_position = None
+            print('Error: Not enough stars to compute position')
+
+        self.time_dict['compute_frame_position'] = time.time() - time_start
+
 
     def info(self, show_time = False): 
 
@@ -650,9 +670,10 @@ class ClusterFrame:
 
                 #Order by distance to the main star at the loop
                 self.stars_sorted_by_main, index_sort = order_by_main_dist_2(main_star, self.clusters_list, True)
-                self.indices_image[i,:] = index_sort[0:self.num_of_neirbours+1]
+                self.indices_image[i,:] = index_sort[0:self.num_of_neirbours+1]   
 
-                if not_close_to_border(main_star, self.frame.shape, 30):                        
+                if not_close_to_border(main_star, self.frame.shape, 30):
+               
                     stars_features_1 = get_star_features_2(
                         self.stars_sorted_by_main[0:self.num_of_neirbours+1],
                         feature_type_1,

@@ -611,6 +611,37 @@ def solve_point_c(points, distances):
     result = minimize(objective, initial_guess, args=(points, distances))
     return result.x
 
+def compute_transformation_matrix(points_A, points_B):
+    # Ensure the input arrays are numpy arrays
+    points_A = np.asarray(points_A)
+    points_B = np.asarray(points_B)
+
+    # Check the shapes of the input arrays
+    assert points_A.shape == points_B.shape, "points_A and points_B must have the same shape"
+    # assert points_A.shape[1] == 3, "Each point must have 3 coordinates (x, y, z)"
+
+    # Add a column of ones to points_A for affine transformation
+    ones = np.ones((points_A.shape[0], 1))
+    A = np.hstack([points_A, ones])
+
+    # Solve the least squares problem A * T = points_B
+    # A is the matrix of input points with an added column of ones
+    # points_B is the matrix of target points
+    T, _, _, _ = np.linalg.lstsq(A, points_B, rcond=None)
+
+    return T
+
+def transform_point(point_A, transformation_matrix):
+    # Ensure the input point is a numpy array
+    point_A = np.asarray(point_A)
+    
+    # Add a 1 to the point for affine transformation
+    point_A = np.append(point_A, 1)
+    
+    # Apply the transformation matrix
+    point_B = point_A.dot(transformation_matrix)
+    
+    return point_B[:3]
 
 def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_image, extend_puzzle = False):
     ''' Check the star id by comparing the neighbours of the star and the dataset neighbours.
@@ -639,11 +670,11 @@ def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_imag
         if indices_neigh_gt[i][0] is not None:
             for j in range(1,len(indices_neigh_image[i])): # For all the neighbours of the cluster [1,5]
                 if indices_neigh_image[i][j] == indices_neigh_gt[i][j]: # If neighbours MATCH +1 for the star and the neighbour 
-                    check_points[i] += 1
-                    check_points[indices_image[i][j]] += 1
-                # elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
-                #     check_points[i] -= 1
-                #     check_points[indices_image[i][j]] -= 1
+                    check_points[i] += 4
+                    check_points[indices_image[i][j]] += 4
+                elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
+                    check_points[i] -= 1
+                    check_points[indices_image[i][j]] -= 1
                     
 
     confirmed_indices = [i for i in range(len(check_points)) if check_points[i] > 0] # Index of original list of confrimed stars
@@ -873,7 +904,7 @@ def predict_star_id_2(features, norm_param, dictionary, som):
     if winner in dictionary:
         return dictionary[winner], activation_map[winner]
     else:
-        return [0], 10 #The neuron has no star ID return [0], the ID starts at 1 
+        return [0], 100 #The neuron has no star ID return [0], the ID starts at 1 
 
 def not_close_to_border(cluster_position, image_shape, min_distance):
     min_distance_to_border = np.min((cluster_position,image_shape-cluster_position))
