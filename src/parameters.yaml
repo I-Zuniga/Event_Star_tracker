@@ -2,16 +2,17 @@
 parameters:
 
   # Paths
-  input_path: "../data/recordings/02_02/recording_2024-02-02_17-21-24_FOV14.3_MAG6.raw"
+  input_path: ""
   # input_path: "../data/recordings/22_03/recording_2024-03-22_15-02-05_FOV_13.7_DE187_RA58.raw"
-  train_folder: 'n78_88_tycho6'
+  # train_folder: 'n78_88_tycho6'
+  train_folder: 'acc97_n89_89_tycho6_permutation_angle_0_75_dist_permutation'
   star_catalog_path: '../data/catalogs/tycho2_VT_6.csv'
   
   # Star detection filtering parameters
   treshold_filter: 0.2
   mass_treshold: 0.2
   pixel_range: 15
-  max_n_clusters: 30
+  max_n_clusters: 50
   compute_ids: True 
 
   # Verbose and visualiation 
@@ -26,9 +27,9 @@ parameters:
 
   # 02_02 setup 
   pixel_to_deg:
-    ref_pixel_to_deg: 0.0009601418439716312 #In degres from sun_calibration with FOV=reference_FOV
+    ref_pixel_to_deg: 0.0009501418439716312 #In degres from sun_calibration with FOV=reference_FOV
     reference_FOV: 1 #In degrees. FOV o the sun calibration recording
-    recording_FOV: 14.3 #In degrees. FOV of the stars recording
+    recording_FOV: 15 #In degrees. FOV of the stars recording
 
   # # # 22_03 setup
   # pixel_to_deg:
