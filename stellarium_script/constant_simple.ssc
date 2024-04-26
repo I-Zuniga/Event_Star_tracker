@@ -1,0 +1,14 @@
+core.resetOutput();
+
+core.setDate(" 2009 -10 -01 T10 :00:00 ");
+core.moveToRaDec(60, 60,1);
+
+core.wait(3)
+
+StelMovementMgr.zoomTo(15, 1);
+
+var final_de = 60
+var final_ra = 80
+var time = 2
+
+core.moveToRaDec(final_de, final_ra,time);

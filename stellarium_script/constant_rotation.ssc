@@ -1,0 +1,38 @@
+//
+// Author: Ignacio Zúñiga
+// Version: 2.1
+// License: Public Domain
+// Name: Star tracker script 
+// Description: Moving around stars at costant rate for star trackers test and validation 
+//
+
+core.resetOutput();
+
+
+var start_de = 70
+var start_ra = 50
+core.moveToRaDec(start_ra, start_de,1);
+
+core.wait(3)
+
+StelMovementMgr.zoomTo(15, 1);
+
+var final_de = 60
+var final_ra = 80
+var time = 10
+var steps = 1000
+
+var diff_ra = final_ra - start_ra
+var diff_de = final_de - start_de
+
+var current_ra = 0
+var current_de = 0
+
+for (i=0; i<steps; i++)
+{	
+	var current_ra = start_ra + diff_ra*i/steps
+	var current_de = start_de + diff_de*i/steps
+	
+ 	core.moveToRaDec(current_ra, current_de,time/steps);
+	core.wait(time/steps)
+}
