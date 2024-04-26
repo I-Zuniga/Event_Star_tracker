@@ -659,7 +659,8 @@ class ClusterFrame:
     def compute_ids_predictions_2(self):
         time_start = time.time()
 
-        feature_type_1 = 'permutation_angle_dist'
+        # feature_type_1 = 'permutation_angle_dist'
+        feature_type_1 = 'permutation_angle_0_75_dist'
         feature_type_2 = 'permutation'
         
         if self.clusters_list.shape[0] > 5:
@@ -672,7 +673,7 @@ class ClusterFrame:
                 self.stars_sorted_by_main, index_sort = order_by_main_dist_2(main_star, self.clusters_list, True)
                 self.indices_image[i,:] = index_sort[0:self.num_of_neirbours+1]   
 
-                if not_close_to_border(main_star, self.frame.shape, 30):
+                if not_close_to_border(main_star, self.frame.shape, 50):
                
                     stars_features_1 = get_star_features_2(
                         self.stars_sorted_by_main[0:self.num_of_neirbours+1],
