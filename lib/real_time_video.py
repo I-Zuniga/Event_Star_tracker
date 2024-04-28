@@ -329,6 +329,9 @@ class ClusterFrame:
         stars_data_df = get_star_dataset(type ='tycho', path = path)
         self.stars_data = stars_data_df[['HIP','RA(ICRS)', 'DE(ICRS)']].values
 
+        # stars that are identified but dont have an HIP number a given the 99999
+        self.stars_data[[np.argwhere(np.isnan(self.stars_data))],0] = 99999
+
         print(self.stars_data.shape,' Stars loaded')
 
     def load_som_parameters(self, name):
