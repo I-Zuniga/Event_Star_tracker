@@ -2,8 +2,8 @@
 parameters:
 
   # Paths
-  # input_path: ""
-  input_path: "../data/recordings/22_04/ra_40to60_de_60to80_20s_recording_2024-04-22_2.raw"
+  input_path: ""
+  # input_path: "../data/recordings/22_04/ra_40to60_de_60to80_20s_recording_2024-04-22_2.raw"
   # train_folder: 'n78_88_tycho6'
   train_folder: 'acc97_n89_89_tycho6_permutation_angle_0_75_dist_permutation'
   star_catalog_path: '../data/catalogs/tycho2_VT_6.csv'
@@ -21,14 +21,14 @@ parameters:
   show_time: False
  
   # Event frames parameters
-  accumulation_time_us: 5000
+  accumulation_time_us: 20000
   delta_t: 1000
-  buffer_size: 20 
+  buffer_size: 10 
 
-  # 02_02 setup 
+  # 02_04 setup 
   pixel_to_deg:
-    ref_pixel_to_deg: 0.0009501418439716312 #In degres from sun_calibration with FOV=reference_FOV
-    reference_FOV: 2 #In degrees. FOV o the sun calibration recording
+    ref_pixel_to_deg: 0.0007916959064327486 #In degres from sun_calibration with FOV=reference_FOV
+    reference_FOV: 1 #In degrees. FOV o the sun calibration recording
     recording_FOV: 15 #In degrees. FOV of the stars recording
 
   # # # 22_03 setup

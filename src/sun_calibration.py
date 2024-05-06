@@ -66,6 +66,7 @@ def main():
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
+            #################### filters set one 
             frame = cv2.threshold(frame*255, 120, 1, cv2.THRESH_BINARY)[1]
             frame = frame*255
             for i in range(1):
@@ -76,6 +77,19 @@ def main():
             frame = frame*255
             for i in range(2):
                 frame = cv2.blur(frame,(5,5))
+
+            ################### filters set two
+            # frame = cv2.threshold(frame, 120, 1, cv2.THRESH_TOZERO)[1]
+
+            # for i in range(5):
+            #     frame = cv2.blur(frame,(5,5))
+            #     frame = cv2.threshold(frame, 5, 1, cv2.THRESH_TOZERO)[1]
+
+            # frame = cv2.threshold(frame*255, 120, 1, cv2.THRESH_BINARY)[1]
+            # frame = frame*255
+
+            # for i in range(10):
+            #     frame = cv2.blur(frame,(5,5))
             
             image = frame
             # plot_image(image)
@@ -84,7 +98,7 @@ def main():
             gray =  image
 
             circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, 1000,
-						   param1=15,param2=15,minRadius=50,maxRadius=300)
+						   param1=15,param2=15,minRadius=100,maxRadius=400)
 
             if circles is not None:
                 circles = np.round(circles[0, :]).astype("int")

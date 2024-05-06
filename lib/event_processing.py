@@ -648,12 +648,12 @@ def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_imag
 
     Parameters
     ----------
-    indices_neigh_gt : np.array
+    indices_neigh_gt : np.array (Star indices set)
         List of the neighbours of the stars in the ground truth.
-    indices_neigh_image : np.array
-        List of the neighbours of the stars in the dataset.
-    indices_image : np.array
-        List of the stars in the dataset.
+    indices_neigh_image : np.array 
+        List of the neighbours of the stars in the dataset.(Star indices set)
+    indices_image : np.array (Order of the indices set)
+        Neighbours indices of the image. Relate the position in the prediction list with the star id. 
     extend_puzzle : bool
         If True, the function returns the star id with the neighbours. If False, the function returns the star id without the neighbours.
 
@@ -670,8 +670,8 @@ def check_star_id_by_neight( indices_neigh_gt, indices_neigh_image, indices_imag
         if indices_neigh_gt[i][0] is not None:
             for j in range(1,len(indices_neigh_image[i])): # For all the neighbours of the cluster [1,5]
                 if indices_neigh_image[i][j] == indices_neigh_gt[i][j]: # If neighbours MATCH +1 for the star and the neighbour 
-                    check_points[i] += 4
-                    check_points[indices_image[i][j]] += 4
+                    check_points[i] += 3
+                    check_points[indices_image[i][j]] += 3
                 elif indices_neigh_image[i][j] is not None: # If neighbours DONT MATCH -1 for the star and the neighbour 
                     check_points[i] -= 1
                     check_points[indices_image[i][j]] -= 1

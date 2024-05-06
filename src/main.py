@@ -94,12 +94,6 @@ def data_timer( args, send_time, terminate_event):
         if current_time - loop_time >= send_time:
             if not data_queue.empty():
                 if args.save_stars:
-                    # TODO: save_stars_queue = queue.Queue()
-                    # ClusterFrame.save_stars(
-                    #     save_stars_queue.get(),
-                    #     training_name = args.train_folder, 
-                    #     recording_path=args.input_path, 
-                    #     time = time.perf_counter() - start_time)
                     print('save_stars Not implemented yet.')
                     
                 if args.save_attitude:
@@ -137,12 +131,13 @@ def run_star_tracker(args):
     cluster_frame.load_som_parameters(args.train_folder)
     cluster_frame.load_star_catalog(args.star_catalog_path)
     cluster_video = ClusterVideo()
+
     global frames
     frames = np.empty((0, height, width), dtype=np.uint8) 
     # frames = np.random.randint(0, 256, size=(1, height, width), dtype=np.uint8)
 
     def on_cd_frame_cb(ts, cd_frame):
-        global frames  # Add this line to access the global frames variable
+        global frames  # Access the global frames variable
         gray_frame = np.reshape(cv2.cvtColor(cd_frame, cv2.COLOR_BGR2GRAY), (1, height, width))
         frames = np.append(frames,gray_frame, axis=0)  # Append the gray_frame as a new row to the frames array
         
@@ -156,11 +151,6 @@ def run_star_tracker(args):
     for evs in mv_iterator:
 
         event_frame_gen.process_events(evs)
-        # TODO: Cambiar buffer a tiempo.
-        # Options:
-        # resaerch benchamarck in LIS and recursive
-
-        # PowerConsumption 
 
         if len(frames) == args.buffer_size:
 
@@ -172,7 +162,7 @@ def run_star_tracker(args):
 
             cluster_frame.update_clusters(frames)
 
-            if args.compute_ids:
+            if args.compute_ids and len(cluster_frame.clusters_list)<70:
 
                 cluster_frame.compute_ids_predictions_2()
 
@@ -183,9 +173,11 @@ def run_star_tracker(args):
                 data_queue.put(cluster_frame.frame_position) # Send data to the queue
 
                 cluster_frame.update_total_time() # Can be commented to improve performance
-
+            else: 
+                cluster_frame.predicted_stars = None
+                cluster_frame.confirmed_stars_ids = None
+                cluster_frame.frame_position = None
             
-            # DuckIp o noDNS 
             #-----------------------------------#
             # Visualization, verbose and saving #
             #-----------------------------------#
@@ -197,7 +189,10 @@ def run_star_tracker(args):
                 cluster_frame.info(show_time = args.show_time)
 
             if args.show_video:
-                close_callbcak = cluster_video.update_frame(cluster_frame.plot_cluster_cv(show_confirmed_ids=True))
+                if cluster_frame.predicted_stars is not None :
+                    close_callbcak = cluster_video.update_frame(cluster_frame.plot_cluster_cv(show_confirmed_ids=True))
+                else :
+                    close_callbcak = cluster_video.update_frame(cluster_frame.frame)
                 if close_callbcak:
                     cv2.destroyAllWindows()
                     break

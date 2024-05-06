@@ -45,6 +45,24 @@ def generate_pixel_noise(stars_data_shape, n_pixels, fov = 15, img_width = 1280)
 
     return pixel_noise
 
+def generate_gaussian_pixel_noise(stars_data_shape, n_pixels, fov = 15, img_width = 1280):
+    pixel_to_deg_ideal = fov/img_width
+    std = pixel_to_deg_ideal * n_pixels
+    pixel_noise = np.random.normal(loc=0, scale=std, size=stars_data_shape)
+    print("Std pixels: ", std)
+
+    return pixel_noise
+
+def generate_false_stars( max_x, max_y):
+    flase_stars  = []
+    for i in range(0, max_x, 15):
+        for j in range(0, max_y, 15):
+            #Genrate random stars in the 15x15 area
+                random_pos_x = np.random.randint(i, i+15)
+                random_pos_y = np.random.randint(j, j+15)
+                flase_stars.append(np.array([random_pos_x, random_pos_y]))
+    return np.array(flase_stars)
+
 # Another dict for map neurons to star (just to check), same as star_ids but created from som.winner rather than som.winner_map
 def add_values_in_dict(sample_dict, key, list_of_values):
     ''' Append multiple values to a key in 

@@ -83,6 +83,7 @@ class ClusterFrame:
             'compute_frame_position': [0, 0]
             }
         
+        self.frame_position = None
         self.first_loop = True
         self.update_count = 0
 
@@ -288,7 +289,7 @@ class ClusterFrame:
 
             # Plot the cluster number as text in the top left corner of the cluster
 
-            if show_confirmed_ids and self.confirmed_stars_ids is not None:
+            if show_confirmed_ids and self.confirmed_stars_ids is not None and self.confirmed_stars_ids is not np.NaN:
 
                 # Full confirmed stars  stars (light green)
                 if confirmed_stars_hip[i] is not None:
@@ -459,18 +460,6 @@ class ClusterFrame:
                                                         np.array(indices_neigh_image, dtype=object),
                                                         np.array(self.indices_image, dtype=object),
                                                         True)
-
-            #repeat: TODO: OPTIMICE 
-            # self.confirmed_stars_ids.tolist()
-            # indices_neigh_gt  = np.full((len(self.confirmed_stars_ids),self.num_of_neirbours+1 ), None)
-            # for i, predicted_star in enumerate(self.confirmed_stars_ids):
-            #     if predicted_star is not None:
-            #         indices_neigh_gt[i]  = self.indices_dt[predicted_star]
-
-            # self.confirmed_stars_ids, _ = check_star_id_by_neight( np.array(indices_neigh_gt, dtype=object),
-            #                                             np.array(indices_neigh_image, dtype=object),
-            #                                             np.array(self.indices_image, dtype=object),
-            #                                             True)
 
             self.confirmed_indices = [i for i, star_id in enumerate(self.confirmed_stars_ids) if star_id is not None]
         else: 
