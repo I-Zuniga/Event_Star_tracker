@@ -2,17 +2,16 @@
 parameters:
 
   # Paths
-  input_path: ""
-  # input_path: "../data/recordings/22_04/ra_40to60_de_60to80_20s_recording_2024-04-22_2.raw"
-  # train_folder: 'n78_88_tycho6'
+  # input_path: "" # To record directly from the camera, uncomment this line and comment the next one
+  input_path: "../data/recordings/02_02/recording_2024-02-02_17-21-24_FOV14.3_MAG6.raw"
   train_folder: 'acc97_n89_89_tycho6_permutation_angle_0_75_dist_permutation'
   star_catalog_path: '../data/catalogs/tycho2_VT_6.csv'
   
   # Star detection filtering parameters
   treshold_filter: 0.3
   mass_treshold: 0.2
-  pixel_range: 12
-  max_n_clusters: 100
+  pixel_range: 15
+  max_n_clusters: 50
   compute_ids: True 
 
   # Verbose and visualiation 
@@ -21,23 +20,16 @@ parameters:
   show_time: False
  
   # Event frames parameters
-  accumulation_time_us: 20000
+  accumulation_time_us: 40000
   delta_t: 1000
   buffer_size: 10 
 
-  # 02_04 setup 
+  # # 02_02 setup - Must be updated for new recordings -> Sun calibration 
   pixel_to_deg:
-    ref_pixel_to_deg: 0.0007916959064327486 #In degres from sun_calibration with FOV=reference_FOV
+    ref_pixel_to_deg: 0.0009600350877192982 #In degres from sun_calibration with FOV=reference_FOV
     reference_FOV: 1 #In degrees. FOV o the sun calibration recording
-    recording_FOV: 15 #In degrees. FOV of the stars recording
-
-  # # # 22_03 setup
-  # pixel_to_deg:
-  #   ref_pixel_to_deg: 0.0009500350877192982 #In degres from sun_calibration with FOV=reference_FOV
-  #   reference_FOV: 1 #In degrees. FOV o the sun calibration recording
-  #   recording_FOV: 13.7 #In degrees. FOV of the stars recordin
+    recording_FOV: 14.3 #In degrees. FOV of the stars recordin
     
-
 # Data saving 
   save_stars: False
   save_attitude: True 
