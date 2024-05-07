@@ -134,7 +134,6 @@ def run_star_tracker(args):
 
     global frames
     frames = np.empty((0, height, width), dtype=np.uint8) 
-    # frames = np.random.randint(0, 256, size=(1, height, width), dtype=np.uint8)
 
     def on_cd_frame_cb(ts, cd_frame):
         global frames  # Access the global frames variable
@@ -157,7 +156,7 @@ def run_star_tracker(args):
             buffer_time = time.perf_counter()
 
             #--------------------#
-            # Compuatation calls #
+            # Computation calls #
             #--------------------#
 
             cluster_frame.update_clusters(frames)
