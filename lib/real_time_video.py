@@ -1,5 +1,3 @@
-from operator import is_
-import re
 from metavision_core.event_io import EventsIterator
 import numpy as np
 import matplotlib.pyplot as plt
@@ -369,7 +367,7 @@ class ClusterFrame:
         print('SOM Parameters loaded correctly')
 
 
-    def compute_ids_predictions(self):
+    def compute_ids_predictions(self):#old version
         time_start = time.time()
 
         if len(self.clusters_list) > 5:
